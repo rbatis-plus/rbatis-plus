@@ -275,6 +275,9 @@ pub trait BaseMapper<T, Id>: Send + Sync {
     fn update(&self, update: UpdateWrapper<T>) -> BoxFuture<'_, PlusResult<u64>>;
     fn delete_by_id(&self, id: Id) -> BoxFuture<'_, PlusResult<bool>>;
     fn insert_batch(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>>;
+    fn update_batch_by_id(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>>;
+    fn save_or_update(&self, entity: T) -> BoxFuture<'_, PlusResult<T>>;
+    fn save_or_update_batch(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>>;
 }
 
 /// Service API delegating to a mapper.
@@ -291,6 +294,9 @@ pub trait IService<T, Id>: Send + Sync {
     fn update(&self, update: UpdateWrapper<T>) -> BoxFuture<'_, PlusResult<u64>>;
     fn remove_by_id(&self, id: Id) -> BoxFuture<'_, PlusResult<bool>>;
     fn save_batch(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>>;
+    fn update_batch_by_id(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>>;
+    fn save_or_update(&self, entity: T) -> BoxFuture<'_, PlusResult<T>>;
+    fn save_or_update_batch(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>>;
 }
 
 #[derive(Debug)]
@@ -339,6 +345,15 @@ where
     }
     fn save_batch(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>> {
         self.mapper.insert_batch(entities)
+    }
+    fn update_batch_by_id(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>> {
+        self.mapper.update_batch_by_id(entities)
+    }
+    fn save_or_update(&self, entity: T) -> BoxFuture<'_, PlusResult<T>> {
+        self.mapper.save_or_update(entity)
+    }
+    fn save_or_update_batch(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>> {
+        self.mapper.save_or_update_batch(entities)
     }
 }
 

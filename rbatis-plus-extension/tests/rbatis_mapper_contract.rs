@@ -179,6 +179,67 @@ async fn batch_insert_rolls_back_atomically_on_duplicate_key() {
     assert!(mapper.select_by_id(4).await.unwrap().is_none());
 }
 
+#[tokio::test]
+async fn save_or_update_and_mixed_batch_follow_id_existence_semantics() {
+    let mapper = Arc::new(mapper().await);
+    let service = ServiceImpl::new(mapper.clone());
+
+    let inserted = service.save_or_update(order(1, "created")).await.unwrap();
+    assert_eq!(inserted.version, 0);
+    let updated = service.save_or_update(order(1, "updated")).await.unwrap();
+    assert_eq!(updated.name, "updated");
+    assert_eq!(updated.version, 1);
+
+    let batch = service
+        .save_or_update_batch(vec![
+            OrderPo {
+                name: "updated-again".to_owned(),
+                ..updated
+            },
+            order(2, "inserted-in-batch"),
+        ])
+        .await
+        .unwrap();
+    assert_eq!(batch[0].version, 2);
+    assert_eq!(batch[1].version, 0);
+    assert_eq!(
+        service.get_by_id(2).await.unwrap().unwrap().name,
+        "inserted-in-batch"
+    );
+}
+
+#[tokio::test]
+async fn update_batch_rolls_back_all_rows_on_missing_or_stale_entity() {
+    let mapper = Arc::new(mapper().await);
+    let service = ServiceImpl::new(mapper.clone());
+    service
+        .save_batch(vec![order(1, "first"), order(2, "second")])
+        .await
+        .unwrap();
+
+    let error = service
+        .update_batch_by_id(vec![order(1, "must-rollback"), order(99, "missing")])
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("optimistic lock conflict"));
+    let first = service.get_by_id(1).await.unwrap().unwrap();
+    assert_eq!(first.name, "first");
+    assert_eq!(first.version, 0);
+
+    let duplicate_version = service
+        .update_batch_by_id(vec![order(2, "temporary"), order(2, "stale")])
+        .await
+        .unwrap_err();
+    assert!(
+        duplicate_version
+            .to_string()
+            .contains("optimistic lock conflict")
+    );
+    let second = service.get_by_id(2).await.unwrap().unwrap();
+    assert_eq!(second.name, "second");
+    assert_eq!(second.version, 0);
+}
+
 #[test]
 fn rejects_untrusted_metadata_identifiers() {
     #[derive(Clone, Serialize, Deserialize)]

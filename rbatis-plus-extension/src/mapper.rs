@@ -62,7 +62,12 @@ where
         Ok(())
     }
 
-    async fn select_one_by_value(&self, id: Value) -> PlusResult<Option<T>> {
+    async fn select_one_on(
+        &self,
+        executor: &dyn Executor,
+        statement_id: &str,
+        id: Value,
+    ) -> PlusResult<Option<T>> {
         let mut sql = format!(
             "SELECT {} FROM {} WHERE {} = ?",
             T::COLUMNS.join(", "),
@@ -71,9 +76,84 @@ where
         );
         append_logic_filter::<T>(&mut sql);
         let rows: Vec<T> = self
-            .query_decode_on(&self.rbatis, "BaseMapper.selectById", sql, vec![id])
+            .query_decode_on(executor, statement_id, sql, vec![id])
             .await?;
         Ok(rows.into_iter().next())
+    }
+
+    async fn select_one_by_value(&self, id: Value) -> PlusResult<Option<T>> {
+        self.select_one_on(&self.rbatis, "BaseMapper.selectById", id)
+            .await
+    }
+
+    async fn update_entity_on(&self, executor: &dyn Executor, entity: &T) -> PlusResult<T> {
+        let value = model_value(entity)?;
+        let id_value = field(&value, T::ID_COLUMN)?;
+        let assignments = T::COLUMNS
+            .iter()
+            .copied()
+            .filter(|column| *column != T::ID_COLUMN)
+            .filter(|column| Some(*column) != T::VERSION_COLUMN)
+            .filter(|column| Some(*column) != T::LOGIC_DELETE_COLUMN)
+            .map(|column| format!("{column} = ?"))
+            .collect::<Vec<_>>();
+        if assignments.is_empty() && T::VERSION_COLUMN.is_none() {
+            return Err(PlusError::InvalidArgument(
+                "update has no mutable columns".to_owned(),
+            ));
+        }
+        let mut args = T::COLUMNS
+            .iter()
+            .copied()
+            .filter(|column| *column != T::ID_COLUMN)
+            .filter(|column| Some(*column) != T::VERSION_COLUMN)
+            .filter(|column| Some(*column) != T::LOGIC_DELETE_COLUMN)
+            .map(|column| field(&value, column))
+            .collect::<PlusResult<Vec<_>>>()?;
+        let mut set_clause = assignments.join(", ");
+        if let Some(version) = T::VERSION_COLUMN {
+            if !set_clause.is_empty() {
+                set_clause.push_str(", ");
+            }
+            write!(set_clause, "{version} = {version} + 1").expect("writing to String");
+        }
+        let mut sql = format!(
+            "UPDATE {} SET {set_clause} WHERE {} = ?",
+            T::TABLE_NAME,
+            T::ID_COLUMN
+        );
+        args.push(id_value.clone());
+        if let Some(version) = T::VERSION_COLUMN {
+            write!(sql, " AND {version} = ?").expect("writing to String");
+            args.push(field(&value, version)?);
+        }
+        append_logic_filter::<T>(&mut sql);
+        let rows_affected = self
+            .execute_on(executor, "BaseMapper.updateById", sql, args)
+            .await?;
+        if rows_affected == 0 {
+            return Err(PlusError::Mapper(
+                "optimistic lock conflict or row not found".to_owned(),
+            ));
+        }
+        self.select_one_on(executor, "BaseMapper.updateById.reload", id_value)
+            .await?
+            .ok_or_else(|| PlusError::Mapper("updated row cannot be reloaded".to_owned()))
+    }
+
+    async fn save_or_update_on(&self, executor: &dyn Executor, entity: &T) -> PlusResult<T> {
+        let value = model_value(entity)?;
+        let id = field(&value, T::ID_COLUMN)?;
+        if self
+            .select_one_on(executor, "BaseMapper.saveOrUpdate.exists", id)
+            .await?
+            .is_some()
+        {
+            self.update_entity_on(executor, entity).await
+        } else {
+            self.insert_on(executor, entity).await?;
+            Ok(entity.clone())
+        }
     }
 
     async fn prepare(
@@ -227,61 +307,7 @@ where
     }
 
     fn update_by_id(&self, entity: T) -> BoxFuture<'_, PlusResult<T>> {
-        Box::pin(async move {
-            let value = model_value(&entity)?;
-            let id_value = field(&value, T::ID_COLUMN)?;
-            let id: Id = rbs::from_value(id_value.clone()).map_err(mapper_error)?;
-            let assignments = T::COLUMNS
-                .iter()
-                .copied()
-                .filter(|column| *column != T::ID_COLUMN)
-                .filter(|column| Some(*column) != T::VERSION_COLUMN)
-                .filter(|column| Some(*column) != T::LOGIC_DELETE_COLUMN)
-                .map(|column| format!("{column} = ?"))
-                .collect::<Vec<_>>();
-            if assignments.is_empty() && T::VERSION_COLUMN.is_none() {
-                return Err(PlusError::InvalidArgument(
-                    "update has no mutable columns".to_owned(),
-                ));
-            }
-            let mut args = T::COLUMNS
-                .iter()
-                .copied()
-                .filter(|column| *column != T::ID_COLUMN)
-                .filter(|column| Some(*column) != T::VERSION_COLUMN)
-                .filter(|column| Some(*column) != T::LOGIC_DELETE_COLUMN)
-                .map(|column| field(&value, column))
-                .collect::<PlusResult<Vec<_>>>()?;
-            let mut set_clause = assignments.join(", ");
-            if let Some(version) = T::VERSION_COLUMN {
-                if !set_clause.is_empty() {
-                    set_clause.push_str(", ");
-                }
-                write!(set_clause, "{version} = {version} + 1").expect("writing to String");
-            }
-            let mut sql = format!(
-                "UPDATE {} SET {set_clause} WHERE {} = ?",
-                T::TABLE_NAME,
-                T::ID_COLUMN
-            );
-            args.push(id_value);
-            if let Some(version) = T::VERSION_COLUMN {
-                write!(sql, " AND {version} = ?").expect("writing to String");
-                args.push(field(&value, version)?);
-            }
-            append_logic_filter::<T>(&mut sql);
-            let rows_affected = self
-                .execute_on(&self.rbatis, "BaseMapper.updateById", sql, args)
-                .await?;
-            if rows_affected == 0 {
-                return Err(PlusError::Mapper(
-                    "optimistic lock conflict or row not found".to_owned(),
-                ));
-            }
-            self.select_by_id(id)
-                .await?
-                .ok_or_else(|| PlusError::Mapper("updated row cannot be reloaded".to_owned()))
-        })
+        Box::pin(async move { self.update_entity_on(&self.rbatis, &entity).await })
     }
 
     fn update(&self, update: UpdateWrapper<T>) -> BoxFuture<'_, PlusResult<u64>> {
@@ -362,6 +388,65 @@ where
             }
             transaction.commit().await.map_err(mapper_error)?;
             Ok(entities)
+        })
+    }
+
+    fn update_batch_by_id(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>> {
+        Box::pin(async move {
+            if entities.is_empty() {
+                return Ok(Vec::new());
+            }
+            let transaction = self.rbatis.acquire_begin().await.map_err(mapper_error)?;
+            let mut updated = Vec::with_capacity(entities.len());
+            for entity in &entities {
+                match self.update_entity_on(&transaction, entity).await {
+                    Ok(entity) => updated.push(entity),
+                    Err(error) => {
+                        let _ = transaction.rollback().await;
+                        return Err(error);
+                    }
+                }
+            }
+            transaction.commit().await.map_err(mapper_error)?;
+            Ok(updated)
+        })
+    }
+
+    fn save_or_update(&self, entity: T) -> BoxFuture<'_, PlusResult<T>> {
+        Box::pin(async move {
+            let transaction = self.rbatis.acquire_begin().await.map_err(mapper_error)?;
+            let result = self.save_or_update_on(&transaction, &entity).await;
+            match result {
+                Ok(entity) => {
+                    transaction.commit().await.map_err(mapper_error)?;
+                    Ok(entity)
+                }
+                Err(error) => {
+                    let _ = transaction.rollback().await;
+                    Err(error)
+                }
+            }
+        })
+    }
+
+    fn save_or_update_batch(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>> {
+        Box::pin(async move {
+            if entities.is_empty() {
+                return Ok(Vec::new());
+            }
+            let transaction = self.rbatis.acquire_begin().await.map_err(mapper_error)?;
+            let mut saved = Vec::with_capacity(entities.len());
+            for entity in &entities {
+                match self.save_or_update_on(&transaction, entity).await {
+                    Ok(entity) => saved.push(entity),
+                    Err(error) => {
+                        let _ = transaction.rollback().await;
+                        return Err(error);
+                    }
+                }
+            }
+            transaction.commit().await.map_err(mapper_error)?;
+            Ok(saved)
         })
     }
 }
