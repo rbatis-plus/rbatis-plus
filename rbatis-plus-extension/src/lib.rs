@@ -7,8 +7,16 @@ use serde_json::Value;
 use std::fmt::Write as _;
 use std::sync::{Arc, Mutex};
 
+mod audit;
 mod mapper;
+mod security;
+pub use audit::{AuditContext, AuditFields, AuditFillInterceptor, AuditOperation};
 pub use mapper::RbatisMapper;
+pub use security::{
+    AesGcmKeyRing, EncryptedParameter, FieldCipher, FieldDecryptionInterceptor,
+    FieldEncryptionInterceptor, PartialRowPolicy, RowSignature, RowSignatureService,
+    RowSignatureVerificationInterceptor, SignatureScope, VerificationOutcome,
+};
 
 pub trait DataScopeProvider: Send + Sync {
     fn condition(&self, statement_id: &str) -> Option<String>;
