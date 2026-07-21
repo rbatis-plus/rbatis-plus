@@ -7,6 +7,9 @@ use serde_json::Value;
 use std::fmt::Write as _;
 use std::sync::{Arc, Mutex};
 
+mod mapper;
+pub use mapper::RbatisMapper;
+
 pub trait DataScopeProvider: Send + Sync {
     fn condition(&self, statement_id: &str) -> Option<String>;
 }

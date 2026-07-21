@@ -29,6 +29,8 @@ pub trait TableMetadata {
     const TABLE_NAME: &'static str;
     const COLUMNS: &'static [&'static str];
     const ID_COLUMN: &'static str;
+    const VERSION_COLUMN: Option<&'static str> = None;
+    const LOGIC_DELETE_COLUMN: Option<&'static str> = None;
 }
 
 /// A typed column reference without Java-style lambda reflection.
@@ -107,13 +109,61 @@ impl<T> Default for QueryWrapper<T> {
 
 impl<T> QueryWrapper<T> {
     pub fn eq<V: Serialize>(mut self, column: &Column<T>, value: V) -> PlusResult<Self> {
+        self.push_predicate(column, Operator::Eq, value)?;
+        Ok(self)
+    }
+
+    pub fn ne<V: Serialize>(mut self, column: &Column<T>, value: V) -> PlusResult<Self> {
+        self.push_predicate(column, Operator::Ne, value)?;
+        Ok(self)
+    }
+
+    pub fn gt<V: Serialize>(mut self, column: &Column<T>, value: V) -> PlusResult<Self> {
+        self.push_predicate(column, Operator::Gt, value)?;
+        Ok(self)
+    }
+
+    pub fn ge<V: Serialize>(mut self, column: &Column<T>, value: V) -> PlusResult<Self> {
+        self.push_predicate(column, Operator::Ge, value)?;
+        Ok(self)
+    }
+
+    pub fn lt<V: Serialize>(mut self, column: &Column<T>, value: V) -> PlusResult<Self> {
+        self.push_predicate(column, Operator::Lt, value)?;
+        Ok(self)
+    }
+
+    pub fn le<V: Serialize>(mut self, column: &Column<T>, value: V) -> PlusResult<Self> {
+        self.push_predicate(column, Operator::Le, value)?;
+        Ok(self)
+    }
+
+    pub fn like<V: Serialize>(mut self, column: &Column<T>, value: V) -> PlusResult<Self> {
+        self.push_predicate(column, Operator::Like, value)?;
+        Ok(self)
+    }
+
+    pub fn r#in<V: Serialize>(mut self, column: &Column<T>, values: Vec<V>) -> PlusResult<Self> {
+        self.push_predicate(column, Operator::In, values)?;
+        Ok(self)
+    }
+
+    pub fn is_null(mut self, column: &Column<T>) -> Self {
         self.predicates.push(Predicate {
             column: column.name().to_owned(),
-            operator: Operator::Eq,
-            value: serde_json::to_value(value)
-                .map_err(|error| PlusError::InvalidArgument(error.to_string()))?,
+            operator: Operator::IsNull,
+            value: Value::Null,
         });
-        Ok(self)
+        self
+    }
+
+    pub fn is_not_null(mut self, column: &Column<T>) -> Self {
+        self.predicates.push(Predicate {
+            column: column.name().to_owned(),
+            operator: Operator::IsNotNull,
+            value: Value::Null,
+        });
+        self
     }
 
     pub fn order_by(mut self, column: &Column<T>, direction: SortDirection) -> Self {
@@ -136,6 +186,21 @@ impl<T> QueryWrapper<T> {
     }
     pub const fn row_limit(&self) -> Option<u64> {
         self.limit
+    }
+
+    fn push_predicate<V: Serialize>(
+        &mut self,
+        column: &Column<T>,
+        operator: Operator,
+        value: V,
+    ) -> PlusResult<()> {
+        self.predicates.push(Predicate {
+            column: column.name().to_owned(),
+            operator,
+            value: serde_json::to_value(value)
+                .map_err(|error| PlusError::InvalidArgument(error.to_string()))?,
+        });
+        Ok(())
     }
 }
 
@@ -207,6 +272,7 @@ pub trait BaseMapper<T, Id>: Send + Sync {
         query: QueryWrapper<T>,
     ) -> BoxFuture<'_, PlusResult<Page<T>>>;
     fn update_by_id(&self, entity: T) -> BoxFuture<'_, PlusResult<T>>;
+    fn update(&self, update: UpdateWrapper<T>) -> BoxFuture<'_, PlusResult<u64>>;
     fn delete_by_id(&self, id: Id) -> BoxFuture<'_, PlusResult<bool>>;
     fn insert_batch(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>>;
 }
@@ -222,6 +288,7 @@ pub trait IService<T, Id>: Send + Sync {
         query: QueryWrapper<T>,
     ) -> BoxFuture<'_, PlusResult<Page<T>>>;
     fn update_by_id(&self, entity: T) -> BoxFuture<'_, PlusResult<T>>;
+    fn update(&self, update: UpdateWrapper<T>) -> BoxFuture<'_, PlusResult<u64>>;
     fn remove_by_id(&self, id: Id) -> BoxFuture<'_, PlusResult<bool>>;
     fn save_batch(&self, entities: Vec<T>) -> BoxFuture<'_, PlusResult<Vec<T>>>;
 }
@@ -263,6 +330,9 @@ where
     }
     fn update_by_id(&self, entity: T) -> BoxFuture<'_, PlusResult<T>> {
         self.mapper.update_by_id(entity)
+    }
+    fn update(&self, update: UpdateWrapper<T>) -> BoxFuture<'_, PlusResult<u64>> {
+        self.mapper.update(update)
     }
     fn remove_by_id(&self, id: Id) -> BoxFuture<'_, PlusResult<bool>> {
         self.mapper.delete_by_id(id)

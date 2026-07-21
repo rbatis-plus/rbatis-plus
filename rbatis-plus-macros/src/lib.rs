@@ -17,6 +17,8 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let name = input.ident;
     let mut table_name = name.to_string().to_lowercase();
     let mut id_column = "id".to_owned();
+    let mut version_column = None;
+    let mut logic_delete_column = None;
     for attribute in input
         .attrs
         .iter()
@@ -27,8 +29,14 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                 table_name = meta.value()?.parse::<LitStr>()?.value();
             } else if meta.path.is_ident("id_column") {
                 id_column = meta.value()?.parse::<LitStr>()?.value();
+            } else if meta.path.is_ident("version_column") {
+                version_column = Some(meta.value()?.parse::<LitStr>()?.value());
+            } else if meta.path.is_ident("logic_delete_column") {
+                logic_delete_column = Some(meta.value()?.parse::<LitStr>()?.value());
             } else {
-                return Err(meta.error("supported keys: table_name, id_column"));
+                return Err(meta.error(
+                    "supported keys: table_name, id_column, version_column, logic_delete_column",
+                ));
             }
             Ok(())
         })?;
@@ -60,11 +68,28 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             format!("id column `{id_column}` is not a field"),
         ));
     }
+    for configured in [version_column.as_ref(), logic_delete_column.as_ref()]
+        .into_iter()
+        .flatten()
+    {
+        if !columns.iter().any(|column| column == configured) {
+            return Err(syn::Error::new_spanned(
+                &name,
+                format!("configured column `{configured}` is not a field"),
+            ));
+        }
+    }
+    let version_column =
+        version_column.map_or_else(|| quote!(None), |column| quote!(Some(#column)));
+    let logic_delete_column =
+        logic_delete_column.map_or_else(|| quote!(None), |column| quote!(Some(#column)));
     Ok(quote! {
         impl ::rbatis_plus_core::TableMetadata for #name {
             const TABLE_NAME: &'static str = #table_name;
             const COLUMNS: &'static [&'static str] = &[#(#columns),*];
             const ID_COLUMN: &'static str = #id_column;
+            const VERSION_COLUMN: Option<&'static str> = #version_column;
+            const LOGIC_DELETE_COLUMN: Option<&'static str> = #logic_delete_column;
         }
     })
 }

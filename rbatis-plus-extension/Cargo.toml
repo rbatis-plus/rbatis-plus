@@ -9,10 +9,15 @@ repository.workspace = true
 
 [dependencies]
 futures.workspace = true
+rbatis.workspace = true
 rbatis-plus-core = { path = "../rbatis-plus-core", version = "=0.1.0-alpha.1" }
+rbs.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+rbdc-sqlite = "4.9.5"
+rbatis-plus-macros = { path = "../rbatis-plus-macros", version = "=0.1.0-alpha.1" }
 tokio.workspace = true
 
 [lints]

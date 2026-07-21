@@ -13,6 +13,8 @@ repository = "https://github.com/rbatis-plus/rbatis-plus"
 futures = "0.3.33"
 proc-macro2 = "1.0.107"
 quote = "1.0.47"
+rbatis = { git = "https://github.com/rbatis-plus/rbatis.git", rev = "bc904e9aa78ab44d5d4ff03b13767262c0caffe8" }
+rbs = "4.8.4"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 syn = { version = "2.0.117", features = ["full"] }
