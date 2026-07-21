@@ -21,6 +21,7 @@ The security vertical slice provides versioned AES-256-GCM field envelopes,
 context-bound blind indexes, HMAC row signatures, key rotation,
 `REJECT_PARTIAL`/`DEFERRED_RESIGN`, and fixed `RESULT_VERIFY` before
 `RESULT_TRANSFORM` ordering. The provider API remains open for an SM4/SM3
-compatibility implementation. `RbatisMapper::with_interceptors` applies rewrite
-and parameter stages before execution, then verification, transformation and
-observation stages to raw query rows before model deserialization.
+compatibility implementation. `SecurePipelineBuilder` reserves the encryption,
+verification and decryption phases, scopes parameter encryption by statement
+ID, rejects incomplete fail-open configuration, and is installed through
+`RbatisMapper::with_secure_pipeline`.

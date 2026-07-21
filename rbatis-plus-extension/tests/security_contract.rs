@@ -2,7 +2,8 @@ use rbatis_plus_core::{InterceptorChain, InterceptorStage, SqlInvocation};
 use rbatis_plus_extension::{
     AesGcmKeyRing, EncryptedParameter, FieldCipher, FieldDecryptionInterceptor,
     FieldEncryptionInterceptor, PartialRowPolicy, RowSignatureService,
-    RowSignatureVerificationInterceptor, SignatureScope, VerificationOutcome,
+    RowSignatureVerificationInterceptor, RowVerificationConfig, SecurePipelineBuilder,
+    SignatureScope, VerificationOutcome,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -116,6 +117,96 @@ async fn verifies_ciphertext_signature_before_decrypting_result_fields() {
     }));
     chain.apply(&mut invocation).await.unwrap();
     assert_eq!(invocation.result.unwrap()["phone"], "13800138000");
+}
+
+#[tokio::test]
+async fn secure_builder_fixes_stage_order_and_scopes_parameter_encryption() {
+    let cipher = Arc::new(cipher("current"));
+    let signer = Arc::new(
+        RowSignatureService::new("current", [("current".to_owned(), vec![5; 32])]).unwrap(),
+    );
+    let verification = RowVerificationConfig::new(
+        signer,
+        vec!["id".to_owned(), "phone".to_owned()],
+        vec!["id".to_owned(), "phone".to_owned()],
+        SignatureScope::FullRow,
+        PartialRowPolicy::RejectPartial,
+        "signature_key",
+        "signature",
+    )
+    .unwrap();
+    let chain = SecurePipelineBuilder::new(cipher, verification)
+        .encrypt_parameters_for(
+            ["OrderMapper.insert"],
+            vec![EncryptedParameter {
+                index: 0,
+                context: b"orders.phone".to_vec(),
+            }],
+        )
+        .decrypt_fields(BTreeMap::from([(
+            "phone".to_owned(),
+            b"orders.phone".to_vec(),
+        )]))
+        .build()
+        .unwrap();
+    assert_eq!(
+        chain.stages(),
+        [
+            InterceptorStage::ParameterTransform,
+            InterceptorStage::ResultVerify,
+            InterceptorStage::ResultTransform,
+        ]
+    );
+
+    let mut select = SqlInvocation::new("OrderMapper.select", "SELECT * FROM orders", vec![]);
+    chain.apply_before_execute(&mut select).await.unwrap();
+
+    let mut insert = SqlInvocation::new(
+        "OrderMapper.insert",
+        "INSERT INTO orders(phone) VALUES (?)",
+        vec![Value::String("13800138000".to_owned())],
+    );
+    chain.apply_before_execute(&mut insert).await.unwrap();
+    assert!(
+        insert.parameters[0]
+            .as_str()
+            .unwrap()
+            .starts_with("v1.current.")
+    );
+}
+
+#[test]
+fn secure_builder_rejects_incomplete_fail_open_configuration() {
+    let signer = Arc::new(
+        RowSignatureService::new("current", [("current".to_owned(), vec![5; 32])]).unwrap(),
+    );
+    assert!(
+        RowVerificationConfig::new(
+            signer.clone(),
+            Vec::new(),
+            Vec::new(),
+            SignatureScope::FullRow,
+            PartialRowPolicy::RejectPartial,
+            "signature_key",
+            "signature",
+        )
+        .is_err()
+    );
+    let verification = RowVerificationConfig::new(
+        signer,
+        vec!["id".to_owned()],
+        vec!["id".to_owned()],
+        SignatureScope::FullRow,
+        PartialRowPolicy::RejectPartial,
+        "signature_key",
+        "signature",
+    )
+    .unwrap();
+    assert!(
+        SecurePipelineBuilder::new(Arc::new(cipher("current")), verification)
+            .build()
+            .is_err()
+    );
 }
 
 #[test]

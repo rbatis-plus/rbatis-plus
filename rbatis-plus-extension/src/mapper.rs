@@ -1,3 +1,4 @@
+use crate::{FieldCipher, SecurePipelineBuilder};
 use futures::future::BoxFuture;
 use rbatis::RBatis;
 use rbatis::executor::Executor;
@@ -39,6 +40,14 @@ where
     pub fn with_interceptors(mut self, interceptors: Arc<InterceptorChain>) -> Self {
         self.interceptors = Some(interceptors);
         self
+    }
+
+    /// Installs a validated, fail-closed security pipeline.
+    pub fn with_secure_pipeline<C: FieldCipher + 'static>(
+        self,
+        pipeline: SecurePipelineBuilder<C>,
+    ) -> PlusResult<Self> {
+        Ok(self.with_interceptors(pipeline.build()?))
     }
 
     pub fn rbatis(&self) -> &RBatis {

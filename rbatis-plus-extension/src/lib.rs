@@ -9,9 +9,11 @@ use std::sync::{Arc, Mutex};
 
 mod audit;
 mod mapper;
+mod pipeline;
 mod security;
 pub use audit::{AuditContext, AuditFields, AuditFillInterceptor, AuditOperation};
 pub use mapper::RbatisMapper;
+pub use pipeline::{RowVerificationConfig, SecurePipelineBuilder};
 pub use security::{
     AesGcmKeyRing, EncryptedParameter, FieldCipher, FieldDecryptionInterceptor,
     FieldEncryptionInterceptor, PartialRowPolicy, RowSignature, RowSignatureService,

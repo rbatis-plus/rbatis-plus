@@ -150,11 +150,26 @@ pub struct EncryptedParameter {
 pub struct FieldEncryptionInterceptor<C> {
     cipher: Arc<C>,
     parameters: Vec<EncryptedParameter>,
+    statement_ids: Option<BTreeSet<String>>,
 }
 
 impl<C> FieldEncryptionInterceptor<C> {
     pub fn new(cipher: Arc<C>, parameters: Vec<EncryptedParameter>) -> Self {
-        Self { cipher, parameters }
+        Self {
+            cipher,
+            parameters,
+            statement_ids: None,
+        }
+    }
+
+    /// Limits parameter encryption to the listed mapper statement IDs.
+    #[must_use]
+    pub fn for_statements(
+        mut self,
+        statement_ids: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.statement_ids = Some(statement_ids.into_iter().map(Into::into).collect());
+        self
     }
 }
 
@@ -165,6 +180,13 @@ impl<C: FieldCipher + 'static> SqlInterceptor for FieldEncryptionInterceptor<C> 
 
     fn intercept<'a>(&'a self, invocation: &'a mut SqlInvocation) -> BoxFuture<'a, PlusResult<()>> {
         Box::pin(async move {
+            if self
+                .statement_ids
+                .as_ref()
+                .is_some_and(|ids| !ids.contains(&invocation.statement_id))
+            {
+                return Ok(());
+            }
             for encrypted in &self.parameters {
                 let parameter =
                     invocation

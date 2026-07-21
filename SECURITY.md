@@ -27,6 +27,8 @@ flowchart LR
 
 AES-256-GCM and HMAC-SHA256 are the implemented default provider. The ddd4j
 SM4/SM3 behavior still requires a dedicated provider and compatibility
-fixtures. Application code must explicitly install the interceptor chain with
-`RbatisMapper::with_interceptors`; secure-by-default framework assembly remains
-tracked before `1.0.0`.
+fixtures. Application code builds a validated chain with
+`SecurePipelineBuilder` and installs it through
+`RbatisMapper::with_secure_pipeline`. The builder reserves the cryptographic
+stages, rejects missing signed-column or decryption policies, and only accepts
+custom SQL rewrite or observation interceptors.
