@@ -5,7 +5,8 @@ use rbatis_plus::{PlusModel, TableMetadata};
     table_name = "orders",
     id_column = "order_id",
     version_column = "version",
-    logic_delete_column = "deleted"
+    logic_delete_column = "deleted",
+    crate_path = "rbatis_plus"
 )]
 struct OrderPo {
     order_id: i64,
