@@ -3,16 +3,22 @@ use aes_gcm::{
     aead::{Aead, Generate, KeyInit, Payload},
 };
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use cbc::cipher::{BlockModeDecrypt, BlockModeEncrypt, KeyIvInit, block_padding::Pkcs7};
 use futures::future::BoxFuture;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit as HmacKeyInit, Mac};
 use rbatis_plus_core::{InterceptorStage, PlusError, PlusResult, SqlInterceptor, SqlInvocation};
 use serde_json::{Map, Value};
 use sha2::Sha256;
+use sm3::Sm3;
+use sm4::Sm4;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use zeroize::Zeroizing;
 
 type HmacSha256 = Hmac<Sha256>;
+type HmacSm3 = Hmac<Sm3>;
+type Sm4CbcEncryptor = cbc::Encryptor<Sm4>;
+type Sm4CbcDecryptor = cbc::Decryptor<Sm4>;
 
 /// Encryption and deterministic blind-index contract for persistence fields.
 pub trait FieldCipher: Send + Sync {
@@ -131,7 +137,189 @@ impl FieldCipher for AesGcmKeyRing {
     }
 
     fn blind_index(&self, plaintext: &[u8], context: &[u8]) -> PlusResult<String> {
-        let mut mac = <HmacSha256 as Mac>::new_from_slice(self.blind_index_key.as_ref())
+        let mut mac = <HmacSha256 as HmacKeyInit>::new_from_slice(self.blind_index_key.as_ref())
+            .map_err(crypto_error)?;
+        mac.update(context);
+        mac.update(&[0]);
+        mac.update(plaintext);
+        Ok(URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes()))
+    }
+}
+
+/// Independent SM4 encryption, HMAC-SM3 authentication and blind-index keys.
+pub struct Sm4Sm3KeyMaterial {
+    encryption: Zeroizing<[u8; 16]>,
+    authentication: Zeroizing<Vec<u8>>,
+    blind_index: Zeroizing<Vec<u8>>,
+}
+
+impl Sm4Sm3KeyMaterial {
+    pub fn new(
+        encryption_key: [u8; 16],
+        authentication_key: impl Into<Vec<u8>>,
+        blind_index_key: impl Into<Vec<u8>>,
+    ) -> PlusResult<Self> {
+        let authentication_key = authentication_key.into();
+        let blind_index_key = blind_index_key.into();
+        if authentication_key.is_empty() || blind_index_key.is_empty() {
+            return Err(PlusError::InvalidArgument(
+                "SM4/SM3 authentication and blind-index keys must not be empty".to_owned(),
+            ));
+        }
+        Ok(Self {
+            encryption: Zeroizing::new(encryption_key),
+            authentication: Zeroizing::new(authentication_key),
+            blind_index: Zeroizing::new(blind_index_key),
+        })
+    }
+}
+
+/// Versioned SM4-CBC/PKCS#7 + HMAC-SM3 encrypt-then-MAC key ring.
+///
+/// Envelopes use `gm1.key-id.iv.ciphertext.tag`. The MAC binds the version,
+/// key ID, field context, IV and ciphertext and is verified before decryption.
+pub struct Sm4Sm3KeyRing {
+    active_key_id: String,
+    keys: BTreeMap<String, Sm4Sm3KeyMaterial>,
+}
+
+impl Sm4Sm3KeyRing {
+    pub fn new(
+        active_key_id: impl Into<String>,
+        keys: impl IntoIterator<Item = (String, Sm4Sm3KeyMaterial)>,
+    ) -> PlusResult<Self> {
+        let active_key_id = active_key_id.into();
+        if active_key_id.is_empty() || active_key_id.contains('.') {
+            return Err(PlusError::InvalidArgument(
+                "active SM4 key id must be non-empty and must not contain `.`".to_owned(),
+            ));
+        }
+        let keys = keys.into_iter().collect::<BTreeMap<_, _>>();
+        if !keys.contains_key(&active_key_id) {
+            return Err(PlusError::InvalidArgument(format!(
+                "active SM4 key `{active_key_id}` is missing"
+            )));
+        }
+        if keys.keys().any(|id| id.is_empty() || id.contains('.')) {
+            return Err(PlusError::InvalidArgument(
+                "SM4 key ids must be non-empty and must not contain `.`".to_owned(),
+            ));
+        }
+        Ok(Self {
+            active_key_id,
+            keys,
+        })
+    }
+
+    pub fn active_key_id(&self) -> &str {
+        &self.active_key_id
+    }
+
+    fn authentication_tag(
+        material: &Sm4Sm3KeyMaterial,
+        key_id: &str,
+        context: &[u8],
+        iv: &[u8; 16],
+        ciphertext: &[u8],
+    ) -> PlusResult<Vec<u8>> {
+        let mut mac = <HmacSm3 as HmacKeyInit>::new_from_slice(material.authentication.as_ref())
+            .map_err(crypto_error)?;
+        Self::update_authentication_mac(&mut mac, key_id, context, iv, ciphertext);
+        Ok(mac.finalize().into_bytes().to_vec())
+    }
+
+    fn update_authentication_mac(
+        mac: &mut HmacSm3,
+        key_id: &str,
+        context: &[u8],
+        iv: &[u8; 16],
+        ciphertext: &[u8],
+    ) {
+        mac.update(b"gm1");
+        mac.update(&[0]);
+        mac.update(key_id.as_bytes());
+        mac.update(&[0]);
+        mac.update(context);
+        mac.update(&[0]);
+        mac.update(iv);
+        mac.update(ciphertext);
+    }
+}
+
+impl FieldCipher for Sm4Sm3KeyRing {
+    fn encrypt(&self, plaintext: &[u8], context: &[u8]) -> PlusResult<String> {
+        let material = self
+            .keys
+            .get(&self.active_key_id)
+            .expect("active key validated at construction");
+        let mut iv = [0_u8; 16];
+        getrandom::fill(&mut iv).map_err(crypto_error)?;
+        let ciphertext = Sm4CbcEncryptor::new_from_slices(material.encryption.as_ref(), &iv)
+            .map_err(crypto_error)?
+            .encrypt_padded_vec::<Pkcs7>(plaintext);
+        let tag =
+            Self::authentication_tag(material, &self.active_key_id, context, &iv, &ciphertext)?;
+        Ok(format!(
+            "gm1.{}.{}.{}.{}",
+            self.active_key_id,
+            URL_SAFE_NO_PAD.encode(iv),
+            URL_SAFE_NO_PAD.encode(ciphertext),
+            URL_SAFE_NO_PAD.encode(tag)
+        ))
+    }
+
+    fn decrypt(&self, envelope: &str, context: &[u8]) -> PlusResult<Vec<u8>> {
+        let mut parts = envelope.split('.');
+        let (Some("gm1"), Some(key_id), Some(iv), Some(ciphertext), Some(tag), None) = (
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+        ) else {
+            return Err(PlusError::InvalidArgument(
+                "invalid SM4/SM3 encrypted field envelope".to_owned(),
+            ));
+        };
+        let material = self
+            .keys
+            .get(key_id)
+            .ok_or_else(|| PlusError::Interceptor {
+                stage: InterceptorStage::ResultVerify,
+                message: format!("unknown SM4 key `{key_id}`"),
+            })?;
+        let iv = URL_SAFE_NO_PAD.decode(iv).map_err(crypto_error)?;
+        let iv: [u8; 16] = iv.try_into().map_err(|value: Vec<u8>| {
+            PlusError::InvalidArgument(format!("invalid SM4 IV length: {}", value.len()))
+        })?;
+        let ciphertext = URL_SAFE_NO_PAD.decode(ciphertext).map_err(crypto_error)?;
+        let supplied_tag = URL_SAFE_NO_PAD.decode(tag).map_err(crypto_error)?;
+        let mut verifier =
+            <HmacSm3 as HmacKeyInit>::new_from_slice(material.authentication.as_ref())
+                .map_err(crypto_error)?;
+        Self::update_authentication_mac(&mut verifier, key_id, context, &iv, &ciphertext);
+        verifier
+            .verify_slice(&supplied_tag)
+            .map_err(|_| PlusError::Interceptor {
+                stage: InterceptorStage::ResultVerify,
+                message: "SM4/SM3 encrypted field authentication failed".to_owned(),
+            })?;
+        Sm4CbcDecryptor::new_from_slices(material.encryption.as_ref(), &iv)
+            .map_err(crypto_error)?
+            .decrypt_padded_vec::<Pkcs7>(&ciphertext)
+            .map_err(|_| PlusError::Interceptor {
+                stage: InterceptorStage::ResultVerify,
+                message: "SM4 ciphertext padding validation failed".to_owned(),
+            })
+    }
+
+    fn blind_index(&self, plaintext: &[u8], context: &[u8]) -> PlusResult<String> {
+        let material = self
+            .keys
+            .get(&self.active_key_id)
+            .expect("active key validated at construction");
+        let mut mac = <HmacSm3 as HmacKeyInit>::new_from_slice(material.blind_index.as_ref())
             .map_err(crypto_error)?;
         mac.update(context);
         mac.update(&[0]);
@@ -454,7 +642,8 @@ impl RowSignatureService {
         let supplied = URL_SAFE_NO_PAD
             .decode(&signature.digest)
             .map_err(crypto_error)?;
-        let mut mac = <HmacSha256 as Mac>::new_from_slice(key.as_ref()).map_err(crypto_error)?;
+        let mut mac =
+            <HmacSha256 as HmacKeyInit>::new_from_slice(key.as_ref()).map_err(crypto_error)?;
         mac.update(&payload);
         mac.verify_slice(&supplied)
             .map_err(|_| PlusError::Interceptor {
@@ -472,7 +661,8 @@ impl RowSignatureService {
         let key = self.keys.get(key_id).ok_or_else(|| {
             PlusError::InvalidArgument(format!("unknown signature key `{key_id}`"))
         })?;
-        let mut mac = <HmacSha256 as Mac>::new_from_slice(key.as_ref()).map_err(crypto_error)?;
+        let mut mac =
+            <HmacSha256 as HmacKeyInit>::new_from_slice(key.as_ref()).map_err(crypto_error)?;
         mac.update(payload);
         Ok(URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes()))
     }

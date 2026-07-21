@@ -17,11 +17,10 @@ pagination, typed query/update wrappers, optimistic locking and logical
 deletion. Internationalization, long-SQL checks and the
 PostgreSQL/MySQL/SQLite/SQL Server matrix remain tracked work before `1.0.0`.
 
-The security vertical slice provides versioned AES-256-GCM field envelopes,
-context-bound blind indexes, HMAC row signatures, key rotation,
-`REJECT_PARTIAL`/`DEFERRED_RESIGN`, and fixed `RESULT_VERIFY` before
-`RESULT_TRANSFORM` ordering. The provider API remains open for an SM4/SM3
-compatibility implementation. `SecurePipelineBuilder` reserves the encryption,
-verification and decryption phases, scopes parameter encryption by statement
-ID, rejects incomplete fail-open configuration, and is installed through
-`RbatisMapper::with_secure_pipeline`.
+The security vertical slice provides versioned AES-256-GCM and authenticated
+SM4-CBC/HMAC-SM3 field envelopes, context-bound blind indexes, HMAC row
+signatures, key rotation, `REJECT_PARTIAL`/`DEFERRED_RESIGN`, and fixed
+`RESULT_VERIFY` before `RESULT_TRANSFORM` ordering. `SecurePipelineBuilder`
+reserves the encryption, verification and decryption phases, scopes parameter
+encryption by statement ID, rejects incomplete fail-open configuration, and is
+installed through `RbatisMapper::with_secure_pipeline`.

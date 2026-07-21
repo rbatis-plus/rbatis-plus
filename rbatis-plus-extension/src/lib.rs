@@ -17,7 +17,8 @@ pub use pipeline::{RowVerificationConfig, SecurePipelineBuilder};
 pub use security::{
     AesGcmKeyRing, EncryptedParameter, FieldCipher, FieldDecryptionInterceptor,
     FieldEncryptionInterceptor, PartialRowPolicy, RowSignature, RowSignatureService,
-    RowSignatureVerificationInterceptor, SignatureScope, VerificationOutcome,
+    RowSignatureVerificationInterceptor, SignatureScope, Sm4Sm3KeyMaterial, Sm4Sm3KeyRing,
+    VerificationOutcome,
 };
 
 pub trait DataScopeProvider: Send + Sync {

@@ -12,15 +12,19 @@ repository = "https://github.com/rbatis-plus/rbatis-plus"
 [workspace.dependencies]
 aes-gcm = { version = "0.11.0", features = ["getrandom", "zeroize"] }
 base64 = "0.22.1"
+cbc = { version = "0.2.1", features = ["alloc", "zeroize"] }
 futures = "0.3.33"
-hmac = "0.12.1"
+getrandom = "0.4.1"
+hmac = "0.13.0"
 proc-macro2 = "1.0.107"
 quote = "1.0.47"
 rbatis = { git = "https://github.com/rbatis-plus/rbatis.git", rev = "bc904e9aa78ab44d5d4ff03b13767262c0caffe8" }
 rbs = "4.8.4"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
-sha2 = "0.10.9"
+sha2 = "0.11.0"
+sm3 = { version = "0.5.0", features = ["zeroize"] }
+sm4 = { version = "0.6.0", features = ["zeroize"] }
 syn = { version = "2.0.117", features = ["full"] }
 thiserror = "2.0.18"
 tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }

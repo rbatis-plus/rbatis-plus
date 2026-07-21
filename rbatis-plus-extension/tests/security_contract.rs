@@ -3,7 +3,7 @@ use rbatis_plus_extension::{
     AesGcmKeyRing, EncryptedParameter, FieldCipher, FieldDecryptionInterceptor,
     FieldEncryptionInterceptor, PartialRowPolicy, RowSignatureService,
     RowSignatureVerificationInterceptor, RowVerificationConfig, SecurePipelineBuilder,
-    SignatureScope, VerificationOutcome,
+    SignatureScope, Sm4Sm3KeyMaterial, Sm4Sm3KeyRing, VerificationOutcome,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -16,6 +16,10 @@ fn cipher(active: &str) -> AesGcmKeyRing {
         [11; 32],
     )
     .unwrap()
+}
+
+fn gm_material(seed: u8) -> Sm4Sm3KeyMaterial {
+    Sm4Sm3KeyMaterial::new([seed; 16], vec![seed + 1; 32], vec![seed + 2; 32]).unwrap()
 }
 
 #[test]
@@ -35,6 +39,71 @@ fn encrypts_with_random_nonces_authenticates_context_and_builds_stable_blind_ind
     assert_ne!(
         blind,
         cipher.blind_index(b"13800138001", b"orders.phone").unwrap()
+    );
+}
+
+#[test]
+fn sm3_and_sm4_match_published_algorithm_vectors() {
+    use hex_literal::hex;
+    use sm3::{Digest, Sm3};
+    use sm4::Sm4;
+    use sm4::cipher::{BlockCipherEncrypt, KeyInit};
+
+    assert_eq!(
+        Sm3::digest(b"abc")[..],
+        hex!("66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0")
+    );
+    let key = hex!("0123456789abcdeffedcba9876543210");
+    let mut block = key.into();
+    Sm4::new(&key.into()).encrypt_block(&mut block);
+    assert_eq!(block[..], hex!("681edf34d206965e86b3e94f536e4246"));
+}
+
+#[test]
+fn sm4_sm3_provider_authenticates_context_rotates_keys_and_builds_blind_indexes() {
+    let old = Sm4Sm3KeyRing::new("old", [("old".to_owned(), gm_material(1))]).unwrap();
+    let old_envelope = old.encrypt(b"13800138000", b"orders.phone").unwrap();
+    assert!(old_envelope.starts_with("gm1.old."));
+
+    let rotated = Sm4Sm3KeyRing::new(
+        "current",
+        [
+            ("old".to_owned(), gm_material(1)),
+            ("current".to_owned(), gm_material(9)),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        rotated.decrypt(&old_envelope, b"orders.phone").unwrap(),
+        b"13800138000"
+    );
+    assert!(rotated.decrypt(&old_envelope, b"users.phone").is_err());
+
+    let first = rotated.encrypt(b"13800138000", b"orders.phone").unwrap();
+    let second = rotated.encrypt(b"13800138000", b"orders.phone").unwrap();
+    assert_ne!(first, second);
+    assert!(first.starts_with("gm1.current."));
+    let mut tampered = first.into_bytes();
+    let last = tampered.last_mut().unwrap();
+    *last = if *last == b'A' { b'B' } else { b'A' };
+    assert!(
+        rotated
+            .decrypt(&String::from_utf8(tampered).unwrap(), b"orders.phone")
+            .is_err()
+    );
+
+    let blind = rotated
+        .blind_index(b"13800138000", b"orders.phone")
+        .unwrap();
+    assert_eq!(
+        blind,
+        rotated
+            .blind_index(b"13800138000", b"orders.phone")
+            .unwrap()
+    );
+    assert_ne!(
+        blind,
+        rotated.blind_index(b"13800138000", b"users.phone").unwrap()
     );
 }
 
