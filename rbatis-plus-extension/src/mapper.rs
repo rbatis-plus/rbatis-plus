@@ -2,8 +2,8 @@ use futures::future::BoxFuture;
 use rbatis::RBatis;
 use rbatis::executor::Executor;
 use rbatis_plus_core::{
-    BaseMapper, Operator, Page, PageRequest, PlusError, PlusResult, QueryWrapper, SortDirection,
-    TableMetadata, UpdateWrapper,
+    BaseMapper, InterceptorChain, Operator, Page, PageRequest, PlusError, PlusResult, QueryWrapper,
+    SortDirection, SqlInvocation, TableMetadata, UpdateWrapper,
 };
 use rbs::Value;
 use serde::Serialize;
@@ -11,11 +11,13 @@ use serde::de::DeserializeOwned;
 use serde_json::Value as JsonValue;
 use std::fmt::Write as _;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 /// A native `RBatis` implementation of the MyBatis-Plus-style `BaseMapper`.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RbatisMapper<T, Id> {
     rbatis: RBatis,
+    interceptors: Option<Arc<InterceptorChain>>,
     marker: PhantomData<fn() -> (T, Id)>,
 }
 
@@ -28,8 +30,15 @@ where
         validate_metadata::<T>()?;
         Ok(Self {
             rbatis,
+            interceptors: None,
             marker: PhantomData,
         })
+    }
+
+    #[must_use]
+    pub fn with_interceptors(mut self, interceptors: Arc<InterceptorChain>) -> Self {
+        self.interceptors = Some(interceptors);
+        self
     }
 
     pub fn rbatis(&self) -> &RBatis {
@@ -48,7 +57,8 @@ where
             "INSERT INTO {} ({columns}) VALUES ({placeholders})",
             T::TABLE_NAME
         );
-        executor.exec(&sql, args).await.map_err(mapper_error)?;
+        self.execute_on(executor, "BaseMapper.insert", sql, args)
+            .await?;
         Ok(())
     }
 
@@ -61,11 +71,73 @@ where
         );
         append_logic_filter::<T>(&mut sql);
         let rows: Vec<T> = self
-            .rbatis
-            .exec_decode(&sql, vec![id])
+            .query_decode_on(&self.rbatis, "BaseMapper.selectById", sql, vec![id])
+            .await?;
+        Ok(rows.into_iter().next())
+    }
+
+    async fn prepare(
+        &self,
+        statement_id: &str,
+        sql: String,
+        args: Vec<Value>,
+    ) -> PlusResult<SqlInvocation> {
+        let parameters = args
+            .into_iter()
+            .map(|value| serde_json::to_value(value).map_err(mapper_error))
+            .collect::<PlusResult<Vec<_>>>()?;
+        let mut invocation = SqlInvocation::new(statement_id, sql, parameters);
+        if let Some(interceptors) = &self.interceptors {
+            interceptors.apply_before_execute(&mut invocation).await?;
+        }
+        Ok(invocation)
+    }
+
+    async fn finish(&self, invocation: &mut SqlInvocation) -> PlusResult<()> {
+        if let Some(interceptors) = &self.interceptors {
+            interceptors.apply_after_execute(invocation).await?;
+        }
+        Ok(())
+    }
+
+    async fn execute_on(
+        &self,
+        executor: &dyn Executor,
+        statement_id: &str,
+        sql: String,
+        args: Vec<Value>,
+    ) -> PlusResult<u64> {
+        let mut invocation = self.prepare(statement_id, sql, args).await?;
+        let args = invocation_args(&invocation)?;
+        let result = executor
+            .exec(&invocation.sql, args)
             .await
             .map_err(mapper_error)?;
-        Ok(rows.into_iter().next())
+        self.finish(&mut invocation).await?;
+        Ok(result.rows_affected)
+    }
+
+    async fn query_decode_on<R: DeserializeOwned>(
+        &self,
+        executor: &dyn Executor,
+        statement_id: &str,
+        sql: String,
+        args: Vec<Value>,
+    ) -> PlusResult<R> {
+        let mut invocation = self.prepare(statement_id, sql, args).await?;
+        let args = invocation_args(&invocation)?;
+        let result = executor
+            .query(&invocation.sql, args)
+            .await
+            .map_err(mapper_error)?;
+        invocation.result = Some(serde_json::to_value(result).map_err(mapper_error)?);
+        self.finish(&mut invocation).await?;
+        serde_json::from_value(
+            invocation
+                .result
+                .ok_or_else(|| PlusError::Mapper("query result was removed".to_owned()))?,
+        )
+        .map_err(mapper_error)
     }
 }
 
@@ -101,10 +173,8 @@ where
                 sql.push_str(" LIMIT ?");
                 args.push(Value::U64(limit));
             }
-            self.rbatis
-                .exec_decode(&sql, args)
+            self.query_decode_on(&self.rbatis, "BaseMapper.selectList", sql, args)
                 .await
-                .map_err(mapper_error)
         })
     }
 
@@ -116,11 +186,16 @@ where
         Box::pin(async move {
             let (where_clause, args) = compile_where::<T>(&query)?;
             let count_sql = format!("SELECT COUNT(*) FROM {}{where_clause}", T::TABLE_NAME);
+            let mut count_invocation = self
+                .prepare("BaseMapper.selectPage.count", count_sql, args.clone())
+                .await?;
+            let count_args = invocation_args(&count_invocation)?;
             let total: i64 = self
                 .rbatis
-                .exec_decode(&count_sql, args.clone())
+                .exec_decode(&count_invocation.sql, count_args)
                 .await
                 .map_err(mapper_error)?;
+            self.finish(&mut count_invocation).await?;
             let total = u64::try_from(total).map_err(|_| {
                 PlusError::Mapper(format!("database returned a negative row count: {total}"))
             })?;
@@ -135,10 +210,13 @@ where
             page_args.push(Value::U64(page.size));
             page_args.push(Value::U64((page.current - 1) * page.size));
             let records = self
-                .rbatis
-                .exec_decode(&sql, page_args)
-                .await
-                .map_err(mapper_error)?;
+                .query_decode_on(
+                    &self.rbatis,
+                    "BaseMapper.selectPage.records",
+                    sql,
+                    page_args,
+                )
+                .await?;
             Ok(Page {
                 records,
                 total,
@@ -192,8 +270,10 @@ where
                 args.push(field(&value, version)?);
             }
             append_logic_filter::<T>(&mut sql);
-            let result = self.rbatis.exec(&sql, args).await.map_err(mapper_error)?;
-            if result.rows_affected == 0 {
+            let rows_affected = self
+                .execute_on(&self.rbatis, "BaseMapper.updateById", sql, args)
+                .await?;
+            if rows_affected == 0 {
                 return Err(PlusError::Mapper(
                     "optimistic lock conflict or row not found".to_owned(),
                 ));
@@ -238,8 +318,8 @@ where
                 T::TABLE_NAME,
                 assignments.join(", ")
             );
-            let result = self.rbatis.exec(&sql, args).await.map_err(mapper_error)?;
-            Ok(result.rows_affected)
+            self.execute_on(&self.rbatis, "BaseMapper.update", sql, args)
+                .await
         })
     }
 
@@ -261,8 +341,10 @@ where
                     vec![id],
                 )
             };
-            let result = self.rbatis.exec(&sql, args).await.map_err(mapper_error)?;
-            Ok(result.rows_affected > 0)
+            let rows_affected = self
+                .execute_on(&self.rbatis, "BaseMapper.deleteById", sql, args)
+                .await?;
+            Ok(rows_affected > 0)
         })
     }
 
@@ -319,6 +401,14 @@ fn validate_metadata<T: TableMetadata>() -> PlusResult<()> {
 
 fn model_value<T: Serialize>(entity: &T) -> PlusResult<Value> {
     rbs::to_value(entity).map_err(mapper_error)
+}
+
+fn invocation_args(invocation: &SqlInvocation) -> PlusResult<Vec<Value>> {
+    invocation
+        .parameters
+        .iter()
+        .map(|value| rbs::to_value(value).map_err(mapper_error))
+        .collect()
 }
 
 fn field(value: &Value, column: &str) -> PlusResult<Value> {

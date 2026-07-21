@@ -402,4 +402,26 @@ impl InterceptorChain {
         }
         Ok(())
     }
+
+    pub async fn apply_before_execute(&self, invocation: &mut SqlInvocation) -> PlusResult<()> {
+        for interceptor in self
+            .interceptors
+            .iter()
+            .filter(|item| item.stage() <= InterceptorStage::Execute)
+        {
+            interceptor.intercept(invocation).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn apply_after_execute(&self, invocation: &mut SqlInvocation) -> PlusResult<()> {
+        for interceptor in self
+            .interceptors
+            .iter()
+            .filter(|item| item.stage() > InterceptorStage::Execute)
+        {
+            interceptor.intercept(invocation).await?;
+        }
+        Ok(())
+    }
 }

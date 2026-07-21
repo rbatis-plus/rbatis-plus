@@ -36,6 +36,14 @@ impl<P: DataScopeProvider> SqlInterceptor for DataPermissionInterceptor<P> {
     }
     fn intercept<'a>(&'a self, invocation: &'a mut SqlInvocation) -> BoxFuture<'a, PlusResult<()>> {
         Box::pin(async move {
+            if !invocation
+                .sql
+                .trim_start()
+                .to_ascii_lowercase()
+                .starts_with("select ")
+            {
+                return Ok(());
+            }
             if let Some(condition) = self
                 .provider
                 .condition(&invocation.statement_id)
@@ -74,6 +82,14 @@ impl SqlInterceptor for TenantInterceptor {
     }
     fn intercept<'a>(&'a self, invocation: &'a mut SqlInvocation) -> BoxFuture<'a, PlusResult<()>> {
         Box::pin(async move {
+            if invocation
+                .sql
+                .trim_start()
+                .to_ascii_lowercase()
+                .starts_with("insert ")
+            {
+                return Ok(());
+            }
             let connector = if invocation.sql.to_ascii_lowercase().contains(" where ") {
                 " AND "
             } else {

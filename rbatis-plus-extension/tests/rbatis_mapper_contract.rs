@@ -1,12 +1,18 @@
 use rbatis::RBatis;
 use rbatis_plus_core::{
-    BaseMapper, Column, IService, PageRequest, QueryWrapper, ServiceImpl, SortDirection,
-    UpdateWrapper,
+    BaseMapper, Column, IService, InterceptorChain, PageRequest, QueryWrapper, ServiceImpl,
+    SortDirection, UpdateWrapper,
 };
-use rbatis_plus_extension::RbatisMapper;
+use rbatis_plus_extension::{
+    AesGcmKeyRing, DataPermissionInterceptor, DataScopeProvider, EncryptedParameter,
+    FieldDecryptionInterceptor, FieldEncryptionInterceptor, PartialRowPolicy, RbatisMapper,
+    RowSignatureService, RowSignatureVerificationInterceptor, SignatureScope, TenantInterceptor,
+};
 use rbatis_plus_macros::PlusModel;
 use rbdc_sqlite::SqliteDriver;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, PlusModel)]
@@ -21,6 +27,31 @@ struct OrderPo {
     name: String,
     version: i64,
     deleted: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, PlusModel)]
+#[rbatis_plus(
+    table_name = "secure_orders",
+    id_column = "id",
+    version_column = "version",
+    logic_delete_column = "deleted"
+)]
+struct SecureOrderPo {
+    id: i64,
+    phone: String,
+    tenant_id: String,
+    department_id: i64,
+    signature_key: String,
+    signature: String,
+    version: i64,
+    deleted: i64,
+}
+
+struct DepartmentScope;
+impl DataScopeProvider for DepartmentScope {
+    fn condition(&self, _: &str) -> Option<String> {
+        Some("department_id = 10".to_owned())
+    }
 }
 
 async fn mapper() -> RbatisMapper<OrderPo, i64> {
@@ -161,4 +192,134 @@ fn rejects_untrusted_metadata_identifiers() {
     }
     let rbatis = RBatis::new();
     assert!(RbatisMapper::<UnsafeModel, i64>::new(rbatis).is_err());
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn mapper_pipeline_encrypts_rewrites_verifies_and_decrypts_real_rows() {
+    let rbatis = RBatis::new();
+    rbatis
+        .link(SqliteDriver {}, "sqlite://:memory:")
+        .await
+        .unwrap();
+    rbatis
+        .exec(
+            "CREATE TABLE secure_orders (id INTEGER PRIMARY KEY, phone TEXT NOT NULL, \
+             tenant_id TEXT NOT NULL, department_id INTEGER NOT NULL, signature_key TEXT NOT NULL, \
+             signature TEXT NOT NULL, version INTEGER NOT NULL, deleted INTEGER NOT NULL)",
+            vec![],
+        )
+        .await
+        .unwrap();
+    let cipher = Arc::new(
+        AesGcmKeyRing::new("current", [("current".to_owned(), [9; 32])], [11; 32]).unwrap(),
+    );
+    let write_chain = Arc::new(InterceptorChain::new(vec![Arc::new(
+        FieldEncryptionInterceptor::new(
+            cipher.clone(),
+            vec![EncryptedParameter {
+                index: 1,
+                context: b"secure_orders.phone".to_vec(),
+            }],
+        ),
+    )]));
+    let write_mapper = RbatisMapper::<SecureOrderPo, i64>::new(rbatis.clone())
+        .unwrap()
+        .with_interceptors(write_chain);
+    write_mapper
+        .insert(SecureOrderPo {
+            id: 10,
+            phone: "13800138000".to_owned(),
+            tenant_id: "tenant-a".to_owned(),
+            department_id: 10,
+            signature_key: String::new(),
+            signature: String::new(),
+            version: 0,
+            deleted: 0,
+        })
+        .await
+        .unwrap();
+    let encrypted: String = rbatis
+        .exec_decode("SELECT phone FROM secure_orders WHERE id = 10", vec![])
+        .await
+        .unwrap();
+    assert!(encrypted.starts_with("v1.current."));
+
+    let signer = Arc::new(
+        RowSignatureService::new("current", [("current".to_owned(), vec![5; 32])]).unwrap(),
+    );
+    let payload = json!({
+        "id": 10,
+        "phone": encrypted,
+        "tenant_id": "tenant-a",
+        "department_id": 10,
+        "version": 0,
+        "deleted": 0
+    });
+    let signature = signer.sign(&payload, &[], SignatureScope::FullRow).unwrap();
+    rbatis
+        .exec(
+            "UPDATE secure_orders SET signature_key = ?, signature = ? WHERE id = 10",
+            vec![
+                rbs::to_value(signature.key_id).unwrap(),
+                rbs::to_value(signature.digest).unwrap(),
+            ],
+        )
+        .await
+        .unwrap();
+
+    let payload_columns = [
+        "id",
+        "phone",
+        "tenant_id",
+        "department_id",
+        "version",
+        "deleted",
+    ];
+    let read_chain = Arc::new(InterceptorChain::new(vec![
+        Arc::new(DataPermissionInterceptor::new(DepartmentScope)),
+        Arc::new(TenantInterceptor::new("tenant-a", "tenant_id")),
+        Arc::new(RowSignatureVerificationInterceptor::new(
+            signer,
+            payload_columns
+                .iter()
+                .map(|value| (*value).to_owned())
+                .collect(),
+            Vec::new(),
+            SignatureScope::FullRow,
+            PartialRowPolicy::RejectPartial,
+            "signature_key",
+            "signature",
+        )),
+        Arc::new(FieldDecryptionInterceptor::new(
+            cipher,
+            BTreeMap::from([("phone".to_owned(), b"secure_orders.phone".to_vec())]),
+        )),
+    ]));
+    let read_mapper = RbatisMapper::<SecureOrderPo, i64>::new(rbatis.clone())
+        .unwrap()
+        .with_interceptors(read_chain);
+    let rows = read_mapper
+        .select_list(QueryWrapper::default())
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].phone, "13800138000");
+
+    rbatis
+        .exec(
+            "UPDATE secure_orders SET phone = 'tampered' WHERE id = 10",
+            vec![],
+        )
+        .await
+        .unwrap();
+    let error = read_mapper
+        .select_list(QueryWrapper::default())
+        .await
+        .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("row signature verification failed")
+    );
 }
