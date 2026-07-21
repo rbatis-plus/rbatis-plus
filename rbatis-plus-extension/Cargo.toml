@@ -1,0 +1,19 @@
+[package]
+name = "rbatis-plus-extension"
+description = "Reusable tenant, data-scope, audit and observation interceptors for rbatis-plus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+futures.workspace = true
+rbatis-plus-core = { path = "../rbatis-plus-core", version = "=0.1.0-alpha.1" }
+serde_json.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

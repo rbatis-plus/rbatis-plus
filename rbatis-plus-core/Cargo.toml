@@ -1,0 +1,20 @@
+[package]
+name = "rbatis-plus-core"
+description = "Core mapper, service, wrapper and interceptor contracts for rbatis-plus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true
