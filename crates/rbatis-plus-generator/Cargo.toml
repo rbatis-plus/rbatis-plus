@@ -11,7 +11,6 @@ rbs = { workspace = true }
 rbdc = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tera = { workspace = true }
 log = { workspace = true }
 chrono = { workspace = true }
 Inflector = { workspace = true }

@@ -27,7 +27,6 @@ serde_json = "1.0.150"
 async-trait = "0.1.89"
 log = "0.4"
 dashmap = "6.1.0"
-tera = "1"
 Inflector = "0.11"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 regex = "1.13.1"
