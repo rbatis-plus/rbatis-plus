@@ -1,0 +1,16 @@
+[package]
+name = "rbatis-plus-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Core conditions, metadata, mapper traits and toolkit for RBatis-Plus"
+
+[dependencies]
+rbatis = { workspace = true }
+rbs = { workspace = true }
+rbdc = { workspace = true }
+serde = { workspace = true }
+async-trait = { workspace = true }
+log = { workspace = true }
+hex = "0.4"
+dashmap = { workspace = true }

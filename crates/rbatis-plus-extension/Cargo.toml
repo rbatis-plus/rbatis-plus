@@ -1,0 +1,17 @@
+[package]
+name = "rbatis-plus-extension"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Interceptors, crypto, signature, i18n, observation and service layer for RBatis-Plus"
+
+[dependencies]
+rbatis-plus-core = { path = "../rbatis-plus-core" }
+rbatis-plus-sqlparser = { path = "../rbatis-plus-sqlparser" }
+rbatis = { workspace = true }
+rbs = { workspace = true }
+rbdc = { workspace = true }
+serde = { workspace = true }
+async-trait = { workspace = true }
+log = { workspace = true }
+dashmap = { workspace = true }

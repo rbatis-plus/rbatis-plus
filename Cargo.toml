@@ -1,0 +1,57 @@
+[workspace]
+members = [
+    "crates/rbatis-plus-core",
+    "crates/rbatis-plus-extension",
+    "crates/rbatis-plus-macros",
+    "crates/rbatis-plus-generator",
+    "crates/rbatis-plus-sqlparser",
+    "crates/rbatis-plus-vernal",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["RBatis-Plus Contributors"]
+description = "MyBatis-Plus equivalent enhancement framework for RBatis"
+repository = "https://github.com/rbatis/rbatis-plus"
+
+[workspace.dependencies]
+rbatis = { path = "../rbatis" }
+rbs = "4"
+rbdc = "4.9"
+serde = "1"
+serde_json = "1"
+async-trait = "0.1"
+log = "0.4"
+dashmap = "6"
+tera = "1"
+Inflector = "0.11"
+chrono = "0.4"
+regex = "1"
+tokio = { version = "1", features = ["full"] }
+
+# ── facade crate ──
+[package]
+name = "rbatis-plus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+
+[dependencies]
+rbatis-plus-core = { path = "crates/rbatis-plus-core" }
+rbatis-plus-extension = { path = "crates/rbatis-plus-extension" }
+rbatis-plus-macros = { path = "crates/rbatis-plus-macros" }
+rbatis-plus-generator = { path = "crates/rbatis-plus-generator" }
+rbatis-plus-sqlparser = { path = "crates/rbatis-plus-sqlparser" }
+rbatis-plus-vernal = { path = "crates/rbatis-plus-vernal" }
+rbatis = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+rbs = { workspace = true }
+serde_json = "1"
+tempfile = "3"

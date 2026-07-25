@@ -1,0 +1,11 @@
+[package]
+name = "rbatis-plus-sqlparser"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SQL parser and rewriter for RBatis-Plus (pagination, dialect support, mirroring mybatis-plus-jsqlparser)"
+
+[dependencies]
+log = { workspace = true }
+serde = { workspace = true }
+regex = "1"

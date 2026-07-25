@@ -1,0 +1,18 @@
+[package]
+name = "rbatis-plus-generator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Code generator for RBatis-Plus (Entity/Mapper/Service/Controller generation, mirroring mybatis-plus-generator)"
+
+[dependencies]
+rbatis = { workspace = true }
+rbs = { workspace = true }
+rbdc = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tera = { workspace = true }
+log = { workspace = true }
+chrono = { workspace = true }
+Inflector = { workspace = true }
+async-trait = { workspace = true }

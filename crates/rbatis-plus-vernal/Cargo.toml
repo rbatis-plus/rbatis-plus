@@ -1,0 +1,14 @@
+[package]
+name = "rbatis-plus-vernal"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Web framework integration for RBatis-Plus (axum/actix-web, mirroring mybatis-plus-spring)"
+
+[dependencies]
+rbatis = { workspace = true }
+rbs = { workspace = true }
+serde = { workspace = true }
+log = { workspace = true }
+rbatis-plus-core = { path = "../rbatis-plus-core" }
+rbatis-plus-extension = { path = "../rbatis-plus-extension" }
