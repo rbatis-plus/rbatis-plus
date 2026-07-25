@@ -98,7 +98,7 @@ impl InnerInterceptor for CryptoInnerInterceptor {
         _sql: &str,
         result: &mut Result<Value, Error>,
     ) -> Result<(), Error> {
-        if let Ok(ref mut value) = result {
+        if let Ok(value) = result {
             decrypt_value_recursive(value, &self.handler, &self.encrypted_columns);
         }
         Ok(())

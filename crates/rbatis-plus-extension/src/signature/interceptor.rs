@@ -71,7 +71,7 @@ impl InnerInterceptor for SignatureInnerInterceptor {
         _sql: &str,
         result: &mut Result<Value, Error>,
     ) -> Result<(), Error> {
-        if let Ok(ref mut value) = result {
+        if let Ok(value) = result {
             verify_result_signatures(value, &self.handler);
         }
         Ok(())

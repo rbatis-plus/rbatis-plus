@@ -12,5 +12,5 @@ rbdc = { workspace = true }
 serde = { workspace = true }
 async-trait = { workspace = true }
 log = { workspace = true }
-hex = "0.4"
+hex = { workspace = true }
 dashmap = { workspace = true }
