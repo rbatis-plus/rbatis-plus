@@ -6,7 +6,10 @@ pub mod base;
 pub mod block_attack;
 pub mod data_permission;
 pub mod dynamic_table_name;
+pub mod enhance_phase;
+pub mod enhance_interceptor;
 pub mod inner_interceptor;
+pub mod mybatis_plus_enhance_interceptor;
 pub mod optimistic_locker;
 pub mod pagination;
 pub mod tenant;
@@ -23,7 +26,10 @@ pub use data_permission::{DataPermissionHandler, DataPermissionInnerInterceptor}
 pub use dynamic_table_name::{
     DynamicTableNameInnerInterceptor, TableNameHandler as DynamicTableNameHandler,
 };
+pub use enhance_phase::EnhancePhase;
+pub use enhance_interceptor::EnhanceInnerInterceptor;
 pub use inner_interceptor::InnerInterceptor;
+pub use mybatis_plus_enhance_interceptor::MybatisPlusEnhanceInterceptor;
 pub use optimistic_locker::OptimisticLockerInnerInterceptor;
 pub use pagination::PaginationInnerInterceptor;
 pub use tenant::{TenantInnerInterceptor, TenantLineHandler};
