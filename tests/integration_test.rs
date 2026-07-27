@@ -1158,8 +1158,8 @@ fn test_derive_version() {
 #[test]
 fn test_derive_table_logic() {
     assert_eq!(SysOrder::logic_column(), "deleted");
-    assert_eq!(SysOrder::logic_value(), "1");
-    assert_eq!(SysOrder::not_logic_value(), "0");
+    assert_eq!(SysOrder::logic_delete_value(), Some("1"));
+    assert_eq!(SysOrder::logic_not_delete_value(), Some("0"));
 }
 
 #[test]

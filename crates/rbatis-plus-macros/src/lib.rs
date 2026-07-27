@@ -155,8 +155,12 @@ pub fn derive_table_name(input: TokenStream) -> TokenStream {
         quote! {
             impl #impl_generics rbatis_plus_core::derive::TableLogic for #name #ty_generics #where_clause {
                 fn logic_column() -> &'static str { #lc }
-                fn logic_value() -> &'static str { #lv }
-                fn not_logic_value() -> &'static str { #nlv }
+                fn logic_delete_value() -> Option<&'static str> {
+                    if #lv.is_empty() { None } else { Some(#lv) }
+                }
+                fn logic_not_delete_value() -> Option<&'static str> {
+                    if #nlv.is_empty() { None } else { Some(#nlv) }
+                }
             }
         }
     } else {
