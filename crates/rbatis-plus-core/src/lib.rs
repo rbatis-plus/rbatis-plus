@@ -34,7 +34,10 @@ pub use conditions::abstract_wrapper::AbstractWrapper;
 pub use conditions::compare::Compare;
 pub use conditions::func::{Func, FuncSegments};
 pub use conditions::merge_segments::MergeSegments;
-pub use conditions::nested::{Nested, Join};
+pub use conditions::nested::Nested;
+pub use conditions::join::Join;
+pub use conditions::shared_string::SharedString;
+pub use conditions::is_sql_segment::{ISqlSegment, SqlType};
 pub use conditions::query::{Column, LambdaColumns, LambdaQueryWrapper, QueryWrapper};
 pub use conditions::update::{LambdaUpdateWrapper, UpdateWrapper};
 // Re-exports from derive（禁止 wildcard）

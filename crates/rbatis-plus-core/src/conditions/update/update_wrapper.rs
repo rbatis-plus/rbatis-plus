@@ -3,7 +3,7 @@
 
 use super::super::abstract_wrapper::AbstractWrapper;
 use super::super::func::FuncSegments;
-use super::super::{compare::Compare, func::Func, nested::Nested, nested::Join};
+use super::super::{compare::Compare, func::Func, nested::Nested, join::Join};
 
 /// Update wrapper with String column names.
 ///

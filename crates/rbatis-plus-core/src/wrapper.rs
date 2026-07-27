@@ -1,7 +1,7 @@
 // Source: rbatis-wrapper/src/wrapper.rs (absorbed for backward compat)
 
 use crate::conditions::query::QueryWrapper;
-use crate::conditions::nested::Join;
+use crate::conditions::join::Join;
 use crate::page::{Page, PageRequest};
 use rbatis::executor::Executor;
 use rbatis::Error;

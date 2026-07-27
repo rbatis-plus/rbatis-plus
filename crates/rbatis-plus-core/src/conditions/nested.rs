@@ -34,40 +34,10 @@ pub trait Nested {
     fn not_group(&mut self, inner_sql: &str) -> &mut Self;
 }
 
-/// Join / raw-SQL condition methods.
+/// Join / raw-SQL condition methods — 已迁移至 `join.rs`。
 ///
-/// Mirrors Java `com.baomidou.mybatisplus.core.conditions.interfaces.Join<Children>`.
-pub trait Join {
-    /// Append a raw SQL fragment (no parameter binding).
-    ///
-    /// 拼接 SQL (无参数绑定)
-    fn apply(&mut self, sql: &str) -> &mut Self;
-
-    /// `EXISTS (subquery)`
-    ///
-    /// EXISTS (子查询)
-    fn exists(&mut self, sql: &str) -> &mut Self;
-
-    /// `NOT EXISTS (subquery)`
-    ///
-    /// NOT EXISTS (子查询)
-    fn not_exists(&mut self, sql: &str) -> &mut Self;
-
-    /// Append raw SQL to the very end (e.g. `LIMIT 1`).
-    ///
-    /// 在 SQL 末尾追加 (如 LIMIT 1)
-    fn last(&mut self, sql: &str) -> &mut Self;
-
-    /// Prepend a SQL comment.
-    ///
-    /// 添加 SQL 注释
-    fn comment(&mut self, sql: &str) -> &mut Self;
-
-    /// Prepend raw SQL before the main query.
-    ///
-    /// 在 SQL 开头追加
-    fn first(&mut self, sql: &str) -> &mut Self;
-}
+/// 原始 Java `Join<Children>` trait 现在定义在 `conditions::join` 模块，
+/// 与 `Nested` trait 分离，实现"一个文件一个 trait"的 Rust 惯例。
 
 // ── Blanket impl for AbstractWrapper ───────────────────────────────────
 
@@ -104,34 +74,4 @@ impl Nested for AbstractWrapper {
     }
 }
 
-impl Join for AbstractWrapper {
-    fn apply(&mut self, sql: &str) -> &mut Self {
-        self.add_fragment(sql.to_string());
-        self
-    }
-
-    fn exists(&mut self, sql: &str) -> &mut Self {
-        self.add_fragment(format!("EXISTS ({})", sql));
-        self
-    }
-
-    fn not_exists(&mut self, sql: &str) -> &mut Self {
-        self.add_fragment(format!("NOT EXISTS ({})", sql));
-        self
-    }
-
-    fn last(&mut self, sql: &str) -> &mut Self {
-        self.sql_last = sql.to_string();
-        self
-    }
-
-    fn comment(&mut self, sql: &str) -> &mut Self {
-        self.sql_comment = sql.to_string();
-        self
-    }
-
-    fn first(&mut self, sql: &str) -> &mut Self {
-        self.sql_first = sql.to_string();
-        self
-    }
-}
+// Join trait 已迁移至 join.rs
