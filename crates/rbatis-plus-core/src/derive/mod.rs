@@ -30,6 +30,6 @@ pub use signature_field::SignatureFieldAttr;
 pub use table_field::TableFieldAttr;
 pub use table_id::TableId;
 pub use table_logic::TableLogic;
-pub use table_name::TableName;
+pub use table_name::{TableName, TableNameInfo};
 pub use table_signature::TableSignature;
 pub use version::Version;
