@@ -23,7 +23,7 @@ impl AbstractMethod for SelectByMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::method::test_utils::test_utils::user_table_info;
+    use crate::method::test_utils::user_table_info;
 
     #[test]
     fn select_by_map_sql() {

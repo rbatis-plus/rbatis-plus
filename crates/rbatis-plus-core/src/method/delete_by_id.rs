@@ -1,4 +1,4 @@
-//! 按主键删除（`DELETE FROM <table> WHERE <pk> = #{<pk_prop>}`）。
+//! 按主键删除（`DELETE FROM <table> WHERE <pk> = ?`）。
 use super::{AbstractMethod, MethodResult};
 use crate::metadata::TableInfo;
 
@@ -10,16 +10,11 @@ pub struct DeleteById;
 
 impl AbstractMethod for DeleteById {
     fn generate_sql(&self, table_info: &TableInfo) -> MethodResult {
-        let pk_col = &table_info.key_column;
-        let pk_prop = &table_info.key_property;
         MethodResult {
-            sql: format!(
-                "DELETE FROM {} WHERE {} = #{{{}}}",
-                table_info.table_name, pk_col, pk_prop
-            ),
+            sql: format!("DELETE FROM {} WHERE {} = ?", table_info.table_name, table_info.key_column),
             method_name: "deleteById".into(),
-            key_column: Some(pk_col.clone()),
-            key_property: Some(pk_prop.clone()),
+            key_column: Some(table_info.key_column.clone()),
+            key_property: Some(table_info.key_property.clone()),
         }
     }
 }
@@ -27,14 +22,13 @@ impl AbstractMethod for DeleteById {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::method::test_utils::test_utils::user_table_info;
+    use crate::method::test_utils::user_table_info;
 
     #[test]
     fn delete_by_id_sql() {
         let result = DeleteById.generate_sql(&user_table_info());
         assert!(result.sql.contains("DELETE FROM users"));
         assert!(result.sql.contains("WHERE id ="));
-        assert!(result.sql.contains("#{id}"));
         assert_eq!(result.key_column.as_deref(), Some("id"));
     }
 }

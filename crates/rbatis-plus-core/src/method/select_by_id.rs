@@ -12,7 +12,7 @@ impl AbstractMethod for SelectById {
     fn generate_sql(&self, table_info: &TableInfo) -> MethodResult {
         let columns = table_info.all_sql_select();
         MethodResult {
-            sql: format!("SELECT {} FROM {} WHERE {} = #{{}}", columns, table_info.table_name, table_info.key_column),
+            sql: format!("SELECT {} FROM {} WHERE {} = ?", columns, table_info.table_name, table_info.key_column),
             method_name: "selectById".into(),
             key_column: Some(table_info.key_column.clone()),
             key_property: Some(table_info.key_property.clone()),
@@ -23,7 +23,7 @@ impl AbstractMethod for SelectById {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::method::test_utils::test_utils::user_table_info;
+    use crate::method::test_utils::user_table_info;
 
     #[test]
     fn select_by_id_sql() {

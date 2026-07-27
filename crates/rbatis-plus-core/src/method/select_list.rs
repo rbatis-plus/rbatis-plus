@@ -23,7 +23,7 @@ impl AbstractMethod for SelectList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::method::test_utils::test_utils::user_table_info;
+    use crate::method::test_utils::user_table_info;
 
     #[test]
     fn select_list_sql() {

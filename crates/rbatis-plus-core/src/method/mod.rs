@@ -19,6 +19,7 @@ mod select_maps;
 mod select_one;
 mod select_objs;
 pub mod test_utils;
+// test_utils 供单元测试和集成测试共用，不加 #[cfg(test)]
 
 pub use abstract_method::{AbstractMethod, MethodResult};
 pub use sql_method::SqlMethod;
