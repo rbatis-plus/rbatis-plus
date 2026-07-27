@@ -60,3 +60,6 @@ serde = { workspace = true }
 rbs = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
+trybuild = "1"
+rbatis-plus-core = { path = "crates/rbatis-plus-core" }
+rbatis-plus-macros = { path = "crates/rbatis-plus-macros" }

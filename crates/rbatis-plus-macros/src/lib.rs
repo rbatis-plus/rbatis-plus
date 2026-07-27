@@ -32,6 +32,14 @@ pub fn derive_table_name(input: TokenStream) -> TokenStream {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
+    // ── 只支持 struct，enum/union 直接报错 ──
+    match &input.data {
+        syn::Data::Struct(_) => {},
+        _ => return syn::Error::new_spanned(name, "derive(TableName) 仅支持 struct，不支持 enum 或 union")
+            .to_compile_error()
+            .into(),
+    }
+
     // ── 提取 struct 级属性 ──
     let table_name = extract_string_attr(&input.attrs, "table_name")
         .unwrap_or_else(|| to_snake_case(&name.to_string()));
