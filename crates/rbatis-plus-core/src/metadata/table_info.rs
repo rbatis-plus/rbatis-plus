@@ -332,7 +332,7 @@ impl TableFieldInfo {
                     format!("{} = #{{{}{}}}", self.column, prefix, self.property)
                 }
             }
-            FieldStrategy::Default | FieldStrategy::Never => {
+            FieldStrategy::Default => {
                 format!("{} = #{{{}{}}}", self.column, prefix, self.property)
             }
         }

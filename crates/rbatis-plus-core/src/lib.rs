@@ -4,6 +4,7 @@ pub mod conditions;
 pub mod derive;
 pub mod mapper;
 pub mod metadata;
+pub mod method;
 pub mod page;
 pub mod toolkit;
 pub mod wrapper;
