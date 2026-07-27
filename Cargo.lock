@@ -1129,6 +1129,7 @@ dependencies = [
  "rbdc",
  "rbs",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
