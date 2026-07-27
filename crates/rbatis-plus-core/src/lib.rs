@@ -24,12 +24,25 @@ pub mod cache {
     pub use key::CacheKey;
     pub use listener::CacheTransactionListener;
     pub use memory::MemoryCacheStore;
-    pub use policy::*;
+    // Re-export from cache::policy（禁止 wildcard）
+    pub use policy::{CachePolicy, TransactionMode, FailureMode};
     pub use store::{CacheStore, CacheTag};
 }
 
-pub use conditions::*;
-pub use derive::*;
+// Re-exports from conditions（禁止 wildcard）
+pub use conditions::abstract_wrapper::AbstractWrapper;
+pub use conditions::compare::Compare;
+pub use conditions::func::{Func, FuncSegments};
+pub use conditions::merge_segments::MergeSegments;
+pub use conditions::nested::{Nested, Join};
+pub use conditions::query::{Column, LambdaColumns, LambdaQueryWrapper, QueryWrapper};
+pub use conditions::update::{LambdaUpdateWrapper, UpdateWrapper};
+// Re-exports from derive（禁止 wildcard）
+pub use derive::{
+    EncryptedFieldAttr, EncryptedTable, FieldFill, FieldStrategy,
+    I18nColumnAttr, I18nColumn, IdType, SignatureFieldAttr,
+    TableFieldAttr, TableId, TableLogic, TableName, TableSignature, Version,
+};
 pub use mapper::BaseMapper;
 pub use metadata::{TableFieldInfo, TableInfo};
 pub use page::{Page, PageRequest};
