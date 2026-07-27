@@ -41,8 +41,8 @@ pub use conditions::update::{LambdaUpdateWrapper, UpdateWrapper};
 pub use derive::{
     EncryptedFieldAttr, EncryptedTable, FieldFill, FieldStrategy,
     I18nColumnAttr, I18nColumn, IdType, SignatureFieldAttr,
-    TableFieldAttr, TableId, TableLogic, TableName, TableNameInfo, TableSignature, Version,
-    OrderBy, KeySequence, InterceptorIgnore, InterceptorIgnoreInfo,
+    DbType, TableFieldAttr, TableId, TableLogic, TableName, TableNameInfo, TableSignature, Version,
+    IEnum, OrderBy, KeySequence, InterceptorIgnore, InterceptorIgnoreInfo,
 };
 pub use mapper::BaseMapper;
 pub use metadata::{TableFieldInfo, TableInfo};

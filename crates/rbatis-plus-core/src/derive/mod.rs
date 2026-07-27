@@ -6,9 +6,11 @@
 
 pub mod encrypted_field;
 pub mod encrypted_table;
+pub mod db_type;
 pub mod field_fill;
 pub mod field_strategy;
 pub mod i18n_column;
+pub mod i_enum;
 pub mod id_type;
 pub mod interceptor_ignore;
 pub mod key_sequence;
@@ -22,12 +24,15 @@ pub mod table_signature;
 pub mod version;
 
 // Re-exports: 每个模块仅暴露对外需要的类型（禁止 wildcard）
+pub use db_type::DbType;
+pub use i_enum::{IEnum, EnumValueType, from_value};
 pub use encrypted_field::EncryptedFieldAttr;
 pub use encrypted_table::EncryptedTable;
 pub use field_fill::FieldFill;
 pub use field_strategy::FieldStrategy;
 pub use i18n_column::I18nColumnAttr;
 pub use i18n_column::I18nColumn;
+// IEnum 已在上方通过 i_enum::{IEnum, EnumValueType, from_value} 统一 re-export
 pub use id_type::IdType;
 pub use interceptor_ignore::{InterceptorIgnore, InterceptorIgnoreInfo};
 pub use key_sequence::KeySequence;
