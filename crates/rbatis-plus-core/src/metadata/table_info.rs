@@ -78,6 +78,77 @@ impl TableInfo {
     pub fn get_sql_where(&self, prefix: &str) -> String {
         format!("{} = {{{}{}}}", self.key_column, prefix, self.key_property)
     }
+
+    // ── SQL generation helpers for Mapper/Executor integration ──
+
+    /// Build all INSERT properties: `#{prefix.key_property}, #{prefix.field1}, ...`
+    ///
+    /// 对应 Java：`TableInfo.getAllInsertSqlPropertyMaybeIf(prefix)` — INSERT 语句的占位符列表
+    pub fn get_all_insert_sql_property(&self, prefix: &str) -> String {
+        let mut props = vec![format!("{{{}{}}}", prefix, self.key_property)];
+        for f in &self.field_list {
+            if f.insert_strategy != FieldStrategy::Never {
+                props.push(format!("{{{}{}}}", prefix, f.property));
+            }
+        }
+        props.join(", ")
+    }
+
+    /// Build all INSERT columns: `column1, column2, ...`
+    ///
+    /// 对应 Java：`TableInfo.getAllInsertSqlColumnMaybeIf(prefix)` — INSERT 语句的列名列表
+    pub fn get_all_insert_sql_column(&self, prefix: &str) -> String {
+        let _ = prefix;
+        let mut cols = vec![self.key_column.clone()];
+        for f in &self.field_list {
+            if f.insert_strategy != FieldStrategy::Never {
+                cols.push(f.column.clone());
+            }
+        }
+        cols.join(", ")
+    }
+
+    /// Build all SET fragments for UPDATE.
+    ///
+    /// 对应 Java：`TableInfo.getAllSqlSet(prefix)` — UPDATE SET 子句
+    pub fn get_all_sql_set(&self, prefix: &str) -> String {
+        let mut set_clauses = Vec::new();
+        for f in &self.field_list {
+            if f.insert_strategy != FieldStrategy::Never {
+                let clause = f.get_sql_set(prefix);
+                if !clause.is_empty() {
+                    set_clauses.push(clause);
+                }
+            }
+        }
+        set_clauses.join(", ")
+    }
+
+    /// Build logic delete SQL fragment.
+    ///
+    /// 对应 Java：`TableInfo.getLogicDeleteSql(startWithAnd, isWhere)`
+    pub fn get_logic_delete_sql(&self, start_with_and: bool, is_where: bool) -> String {
+        if let Some(ref field) = self.logic_delete_field {
+            let prefix = if is_where { "" } else { "set " };
+            let connector = if start_with_and { "AND " } else { "" };
+            format!(
+                "{}{} = {}",
+                connector, field.column, field.logic_delete_value
+            )
+        } else {
+            String::new()
+        }
+    }
+
+    /// Whether the entity has logic delete support.
+    pub fn is_logic_delete(&self) -> bool {
+        self.with_logic_delete && self.logic_delete_field.is_some()
+    }
+
+    /// Whether the entity has version field.
+    pub fn is_version(&self) -> bool {
+        self.with_version && self.version_field.is_some()
+    }
 }
 
 /// Per-field metadata.
@@ -217,6 +288,79 @@ impl Default for TableFieldInfo {
     }
 }
 
+impl TableFieldInfo {
+    // ── SQL generation methods for Mapper/Executor integration ──
+
+    /// Build INSERT value property: `#{prefix.property}` or conditional insert.
+    ///
+    /// 对应 Java：`TableFieldInfo.getInsertSqlProperty(prefix)`
+    pub fn get_insert_sql_property(&self, prefix: &str) -> String {
+        format!("{{{}{}}}", prefix, self.property)
+    }
+
+    /// Build INSERT column: `column` or conditional.
+    ///
+    /// 对应 Java：`TableFieldInfo.getInsertSqlColumn()`
+    pub fn get_insert_sql_column(&self) -> String {
+        self.column.clone()
+    }
+
+    /// Build UPDATE SET fragment: `column = #{prefix.property}` or `column = <expression>`.
+    ///
+    /// 对应 Java：`TableFieldInfo.getSqlSet(prefix)`
+    pub fn get_sql_set(&self, prefix: &str) -> String {
+        if !self.update.is_empty() {
+            format!("{} = {}", self.column, self.update)
+        } else {
+            format!("{} = #{{{}{}}}", self.column, prefix, self.property)
+        }
+    }
+
+    /// Build WHERE condition for this field.
+    ///
+    /// 对应 Java：`TableFieldInfo.getSqlWhere(prefix)` — WHERE 子句中的条件
+    pub fn get_field_sql_where(&self, prefix: &str) -> String {
+        match self.where_strategy {
+            FieldStrategy::Never => String::new(),
+            FieldStrategy::Always | FieldStrategy::NotNull => {
+                format!("{} = #{{{}{}}}", self.column, prefix, self.property)
+            }
+            FieldStrategy::NotEmpty => {
+                if self.is_char_sequence {
+                    format!("{} != '' AND {} = #{{{}{}}}", self.column, self.column, prefix, self.property)
+                } else {
+                    format!("{} = #{{{}{}}}", self.column, prefix, self.property)
+                }
+            }
+            FieldStrategy::Default | FieldStrategy::Never => {
+                format!("{} = #{{{}{}}}", self.column, prefix, self.property)
+            }
+        }
+    }
+
+    /// Build version WHERE condition for optimistic lock.
+    ///
+    /// 对应 Java：`TableFieldInfo.getVersionOli(alias, prefix)`
+    pub fn get_version_oli(&self, alias: &str, prefix: &str) -> String {
+        if self.version {
+            format!("{}{} = #{{{}{}}}", alias, self.column, prefix, self.property)
+        } else {
+            String::new()
+        }
+    }
+
+    /// Build column value for WHERE clause (from field value).
+    ///
+    /// 对应 Java：`TableFieldInfo.getColumnValue(value)`
+    pub fn get_column_value(&self, value: &str) -> String {
+        if self.where_strategy == FieldStrategy::NotEmpty {
+            format!("{} != '' AND {} = '{}'", self.column, self.column, value)
+        } else {
+            format!("{} = '{}'", self.column, value)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -246,6 +390,182 @@ mod tests {
         assert!(info.select);
         assert!(!info.version);
         assert!(!info.logic_delete);
+    }
+
+    #[test]
+    fn table_field_info_sql_set() {
+        // 正常字段
+        let normal = TableFieldInfo {
+            column: "name".into(),
+            property: "name".into(),
+            insert_strategy: FieldStrategy::NotNull,
+            ..Default::default()
+        };
+        assert_eq!(normal.get_sql_set("et."), "name = #{et.name}");
+
+        // 带 update 表达式的字段
+        let with_update = TableFieldInfo {
+            column: "version".into(),
+            property: "version".into(),
+            update: "%s+1".into(),
+            ..Default::default()
+        };
+        assert_eq!(with_update.get_sql_set("et."), "version = %s+1");
+    }
+
+    #[test]
+    fn table_field_info_field_sql_where() {
+        let field = TableFieldInfo {
+            column: "name".into(),
+            property: "name".into(),
+            where_strategy: FieldStrategy::NotNull,
+            ..Default::default()
+        };
+        assert_eq!(field.get_field_sql_where("et."), "name = #{et.name}");
+
+        let never = TableFieldInfo {
+            column: "name".into(),
+            property: "name".into(),
+            where_strategy: FieldStrategy::Never,
+            ..Default::default()
+        };
+        assert_eq!(never.get_field_sql_where("et."), "");
+    }
+
+    #[test]
+    fn table_field_info_column_value() {
+        let field = TableFieldInfo {
+            column: "name".into(),
+            property: "name".into(),
+            where_strategy: FieldStrategy::NotNull,
+            ..Default::default()
+        };
+        assert_eq!(field.get_column_value("test"), "name = 'test'");
+
+        let not_empty = TableFieldInfo {
+            column: "name".into(),
+            property: "name".into(),
+            where_strategy: FieldStrategy::NotEmpty,
+            is_char_sequence: true,
+            ..Default::default()
+        };
+        assert!(not_empty.get_column_value("test").contains("!= ''"));
+    }
+
+    #[test]
+    fn table_info_insert_sql_with_skip() {
+        let info = TableInfo {
+            entity_type: "User",
+            table_name: "sys_user".into(),
+            key_column: "id".into(),
+            key_property: "id".into(),
+            id_type: IdType::None,
+            field_list: vec![
+                TableFieldInfo { column: "name".into(), property: "name".into(),
+                    insert_strategy: FieldStrategy::NotNull, ..Default::default() },
+                TableFieldInfo { column: "big_blob".into(), property: "big_blob".into(),
+                    insert_strategy: FieldStrategy::Never, ..Default::default() },
+            ],
+            with_logic_delete: false,
+            logic_delete_field: None,
+            with_version: false,
+            version_field: None,
+            auto_init_result_map: false,
+            key_related: false,
+            column_format: String::new(),
+            under_camel: false,
+            result_ordered: false,
+            order_by_fields: vec![],
+        };
+        // INSERT column: big_blob (Never) 应被跳过
+        assert_eq!(info.all_insert_sql_column("et"), "id, name");
+        // INSERT property: big_blob (Never) 应被跳过
+        assert_eq!(info.get_all_insert_sql_property("et."), "{et.id}, {et.name}");
+    }
+
+    #[test]
+    fn table_info_set_sql() {
+        let info = TableInfo {
+            entity_type: "User",
+            table_name: "sys_user".into(),
+            key_column: "id".into(),
+            key_property: "id".into(),
+            id_type: IdType::None,
+            field_list: vec![
+                TableFieldInfo { column: "name".into(), property: "name".into(),
+                    insert_strategy: FieldStrategy::NotNull, ..Default::default() },
+                TableFieldInfo { column: "version".into(), property: "version".into(),
+                    update: "%s+1".into(), insert_strategy: FieldStrategy::Default,
+                    version: true, ..Default::default() },
+            ],
+            with_logic_delete: false,
+            logic_delete_field: None,
+            with_version: true,
+            version_field: None,
+            auto_init_result_map: false,
+            key_related: false,
+            column_format: String::new(),
+            under_camel: false,
+            result_ordered: false,
+            order_by_fields: vec![],
+        };
+        let set_sql = info.get_all_sql_set("et.");
+        assert!(set_sql.contains("name = #{et.name}"));
+        assert!(set_sql.contains("version = %s+1"));
+    }
+
+    #[test]
+    fn table_info_logic_delete() {
+        let logic_field = TableFieldInfo {
+            column: "deleted".into(),
+            property: "deleted".into(),
+            logic_delete: true,
+            logic_not_delete_value: "0".into(),
+            logic_delete_value: "1".into(),
+            ..Default::default()
+        };
+        let info = TableInfo {
+            entity_type: "User",
+            table_name: "sys_user".into(),
+            key_column: "id".into(),
+            key_property: "id".into(),
+            id_type: IdType::None,
+            field_list: vec![],
+            with_logic_delete: true,
+            logic_delete_field: Some(logic_field),
+            with_version: false,
+            version_field: None,
+            auto_init_result_map: false,
+            key_related: false,
+            column_format: String::new(),
+            under_camel: false,
+            result_ordered: false,
+            order_by_fields: vec![],
+        };
+        assert!(info.is_logic_delete());
+        let sql = info.get_logic_delete_sql(true, true);
+        assert!(sql.contains("deleted = 1"));
+        assert!(sql.contains("AND"));
+    }
+
+    #[test]
+    fn table_field_info_version_oli() {
+        let field = TableFieldInfo {
+            version: true,
+            column: "version".into(),
+            property: "version".into(),
+            ..Default::default()
+        };
+        assert_eq!(field.get_version_oli("", "et."), "version = #{et.version}");
+        assert_eq!(field.get_version_oli("t.", "et."), "t.version = #{et.version}");
+
+        let non_version = TableFieldInfo {
+            version: false,
+            column: "name".into(),
+            property: "name".into(),
+            ..Default::default()
+        };
+        assert_eq!(non_version.get_version_oli("", "et."), "");
     }
 
     #[test]
