@@ -14,7 +14,7 @@ use rbatis_plus_sqlparser::*;
 use rbatis_plus_extension::inner::pagination::PaginationInnerInterceptor;
 use rbatis_plus_extension::crypto::{CryptoInnerInterceptor, DefaultEncryptedFieldHandler, EncryptedFieldHandler};
 use rbatis_plus_extension::signature::{SignatureInnerInterceptor, DefaultDataSignatureHandler, DataSignatureHandler};
-use rbatis_plus_extension::i18n::{DefaultI18nHandler, I18nHandler};
+use rbatis_plus_extension::i18n::DefaultDataI18nHandler as DefaultI18nHandler;
 use rbatis_plus_extension::observation::{DefaultObservationHandler, SqlObservationHandler};
 use rbatis_plus_extension::insert_ignore::{MysqlInsertIgnoreHandler, PostgreSqlInsertIgnoreHandler, InsertIgnoreHandler};
 use rbatis_plus_vernal::*;
@@ -1298,17 +1298,19 @@ fn test_signature_interceptor_debug() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_i18n_handler_resolve_column() {
-    let handler = DefaultI18nHandler::new("zh_CN");
-    assert_eq!(handler.current_locale(), "zh_CN");
-    assert_eq!(handler.resolve_column("name", "zh_CN"), "name_zh_CN");
-    assert_eq!(handler.resolve_column("name", "en_US"), "name_en_US");
+fn test_i18n_handler_builder() {
+    let handler = DefaultI18nHandler::new()
+        .with_i18n_column("_i18n")
+        .with_target_columns(&["name", "desc"]);
+    assert_eq!(handler.i18n_column(), "_i18n");
+    assert_eq!(handler.target_columns().len(), 2);
 }
 
 #[test]
 fn test_i18n_handler_default() {
     let handler = DefaultI18nHandler::default();
-    assert_eq!(handler.current_locale(), "zh_CN");
+    assert_eq!(handler.i18n_column(), "_i18n");
+    assert!(handler.target_columns().is_empty());
 }
 
 // ---------------------------------------------------------------------------

@@ -45,4 +45,4 @@ pub use rbatis_plus_extension::service::IService;
 pub use rbatis_plus_extension::service::ServiceImpl;
 
 // 复用上游 rbatis 主仓的缓存实现
-pub use rbatis::plugin::cache::*;
+pub use rbatis::plugin::cache::{CacheError, CacheIntercept, CacheKey, CachePolicy, CacheStore, CacheTag, MemoryCacheStore, SharedCacheStore, CacheTransactionListener, TransactionCacheMode, CacheFailureMode, L1Cache, SharedL1Cache, SingleFlight, TransactionalCacheBuffer, UseCacheFilter};
