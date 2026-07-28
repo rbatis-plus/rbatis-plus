@@ -34,6 +34,7 @@ pub use rbatis_plus_core::metadata::{TableFieldInfo, TableInfo};
 pub use rbatis_plus_core::page::{Page, PageRequest};
 
 pub use rbatis_plus_extension::inner::data_permission::DataPermissionInnerInterceptor;
+pub use rbatis_plus_extension::inner::data_i18n::DataI18nInnerInterceptor;
 pub use rbatis_plus_extension::inner::InnerInterceptor;
 pub use rbatis_plus_extension::inner::block_attack::BlockAttackInnerInterceptor;
 pub use rbatis_plus_extension::inner::pagination::PaginationInnerInterceptor;
@@ -42,3 +43,6 @@ pub use rbatis_plus_extension::inner::optimistic_locker::OptimisticLockerInnerIn
 pub use rbatis_plus_extension::inner::dynamic_table_name::DynamicTableNameInnerInterceptor;
 pub use rbatis_plus_extension::service::IService;
 pub use rbatis_plus_extension::service::ServiceImpl;
+
+// 复用上游 rbatis 主仓的缓存实现
+pub use rbatis::plugin::cache::*;

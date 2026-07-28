@@ -33,7 +33,7 @@ regex = "1.13.1"
 hex = "0.4"
 proc-macro2 = "1.0.107"
 quote = "1.0.47"
-syn = { version = "2.0.119", features = ["full"] }
+syn = { version = "3.0.3", features = ["full"] }
 tempfile = "3.27.0"
 
 # ── facade crate ──

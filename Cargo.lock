@@ -1230,7 +1230,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rbatis-plus-core",
- "syn 2.0.119",
+ "syn 3.0.3",
  "trybuild",
 ]
 

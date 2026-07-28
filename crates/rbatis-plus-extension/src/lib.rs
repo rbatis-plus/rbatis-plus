@@ -15,3 +15,6 @@ pub mod insert_ignore;
 pub mod observation;
 pub mod service;
 pub mod signature;
+
+// 复用上游 rbatis 主仓的缓存实现
+pub use rbatis::plugin::cache::*;

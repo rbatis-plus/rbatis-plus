@@ -9,26 +9,8 @@ pub mod page;
 pub mod toolkit;
 pub mod wrapper;
 
-/// 二级缓存子系统：CacheStore SPI、CacheKey、CachePolicy、CacheIntercept、
-/// CacheTransactionListener 以及内置 MemoryCacheStore。
-pub mod cache {
-    pub mod error;
-    pub mod intercept;
-    pub mod key;
-    pub mod listener;
-    pub mod memory;
-    pub mod policy;
-    pub mod store;
-
-    pub use error::CacheError;
-    pub use intercept::CacheIntercept;
-    pub use key::CacheKey;
-    pub use listener::CacheTransactionListener;
-    pub use memory::MemoryCacheStore;
-    // Re-export from cache::policy（禁止 wildcard）
-    pub use policy::{CachePolicy, TransactionMode, FailureMode};
-    pub use store::{CacheStore, CacheTag};
-}
+/// 二级缓存子系统：复用上游 rbatis::plugin::cache 的完整实现。
+pub mod cache;
 
 // Re-exports from conditions（禁止 wildcard）
 pub use conditions::abstract_wrapper::AbstractWrapper;
