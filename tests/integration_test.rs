@@ -18,6 +18,7 @@ use rbatis_plus_extension::i18n::DefaultDataI18nHandler as DefaultI18nHandler;
 use rbatis_plus_extension::observation::{DefaultObservationHandler, SqlObservationHandler};
 use rbatis_plus_extension::insert_ignore::{MysqlInsertIgnoreHandler, PostgreSqlInsertIgnoreHandler, InsertIgnoreHandler};
 use rbatis_plus_vernal::*;
+#[cfg(feature = "axum")]
 use rbatis_plus_vernal::axum_integration::*;
 
 // ---------------------------------------------------------------------------
@@ -935,6 +936,10 @@ fn test_vernal_config_defaults() {
     assert_eq!(config.max_page_size, 500);
 }
 
+#[cfg(feature = "axum")]
+mod axum_page_tests {
+    use super::*;
+
 #[test]
 fn test_page_param_defaults() {
     let param = PageParam::default();
@@ -1018,6 +1023,8 @@ fn test_order_param_default_asc() {
     assert!(param.is_asc()); // 默认升序
     assert_eq!(param.build_order_by(), " ORDER BY name ASC");
 }
+
+} // mod axum_page_tests
 
 // ---------------------------------------------------------------------------
 // PaginationInnerInterceptor 测试（分页拦截器）

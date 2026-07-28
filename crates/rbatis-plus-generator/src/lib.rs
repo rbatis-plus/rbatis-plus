@@ -46,6 +46,7 @@ pub mod auto_generator_builder;
 pub mod config;
 pub mod engine;
 pub mod query;
+pub mod template;
 
 // Re-export 核心类型（禁止 wildcard）
 pub use auto_generator::AutoGenerator;
@@ -54,3 +55,4 @@ pub use config::{DataSourceConfig, GlobalConfig, PackageConfig, StrategyConfig};
 pub use config::data_source::DbType;
 pub use engine::TeraEngine;
 pub use query::{TableField, TableInfo};
+pub use template::{AskamaEngine, HandlebarsEngine, MaudEngine, TemplateEngine};

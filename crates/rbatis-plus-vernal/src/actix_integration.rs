@@ -1,20 +1,18 @@
-//! axum 框架集成（对标 mybatis-plus-spring 的 Spring MVC 集成）。
+//! actix-web 框架集成（对标 mybatis-plus-spring 的 Spring MVC 集成）。
 //!
-//! 提供 axum 的分页提取器、分页响应体等集成能力。
+//! 提供 actix-web 的分页提取器、分页响应体等集成能力。
 //!
 //! # 对应 Java
 //!
 //! - `com.baomidou.mybatisplus.extension.plugins.pagination.Page`
 //! - `com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor`
 
-use axum::extract::FromRequestParts;
-use axum::http::request::Parts;
-use axum::response::{IntoResponse, Response};
-use axum::Json;
-use rbatis_plus_core::page::{Page, PageRequest};
+use actix_web::HttpRequest;
+use actix_web::Responder;
+use rbatis_plus_core::page::Page;
 use serde::Deserialize;
 
-/// axum 分页查询参数提取器（对标 Java `Page<T>` 的 HTTP 参数绑定）。
+/// actix-web 分页查询参数提取器（对标 Java `Page<T>` 的 HTTP 参数绑定）。
 ///
 /// 从 URL query string 中自动提取分页参数：
 /// - `page_no`（默认 1）
@@ -23,12 +21,12 @@ use serde::Deserialize;
 /// # Example
 ///
 /// ```ignore
-/// use axum::extract::Query;
-/// use rbatis_plus_vernal::axum_integration::PageParam;
+/// use actix_web::web;
+/// use rbatis_plus_vernal::actix_integration::PageParam;
 ///
-/// async fn list(Query(param): Query<PageParam>) -> String {
-///     let page_req = param.to_page_request(500); // max_page_size = 500
-///     format!("page={}, size={}", page_req.page_no, page_req.page_size)
+/// async fn list(query: web::Query<PageParam>) -> String {
+///     let param = query.into_inner();
+///     format!("page={}, size={}", param.page_no, param.page_size)
 /// }
 /// ```
 #[derive(Debug, Clone, Deserialize)]
@@ -49,10 +47,13 @@ fn default_page_size() -> u64 {
 }
 
 impl PageParam {
-    /// 转换为 PageRequest（带最大页大小限制）。
+    /// 转换为 `PageRequest`（带最大页大小限制）。
     ///
     /// 对应 Java `PaginationInnerInterceptor.autoPage()` 中的大小限制逻辑。
-    pub fn to_page_request(&self, max_page_size: u64) -> PageRequest {
+    pub fn to_page_request(
+        &self,
+        max_page_size: u64,
+    ) -> rbatis_plus_core::page::PageRequest {
         let size = if self.page_size > max_page_size {
             log::warn!(
                 "分页大小 {} 超过最大限制 {}，已截断",
@@ -66,7 +67,7 @@ impl PageParam {
             self.page_size
         };
         let page_no = if self.page_no == 0 { 1 } else { self.page_no };
-        PageRequest::new(page_no, size)
+        rbatis_plus_core::page::PageRequest::new(page_no, size)
     }
 
     /// 创建空的分页结果。
@@ -84,38 +85,29 @@ impl Default for PageParam {
     }
 }
 
-/// axum `FromRequestParts` 实现，从 query string 中提取 `PageParam`。
+/// actix-web `FromRequest` 实现，从 query string 中提取 `PageParam`。
 ///
 /// 对应 Java Spring MVC 中 `@RequestParam` 自动绑定分页参数。
-///
-/// # Example
-///
-/// ```ignore
-/// use rbatis_plus_vernal::axum_integration::PageParam;
-///
-/// async fn list(param: PageParam) -> String {
-///     format!("page={}, size={}", param.page_no, param.page_size)
-/// }
-/// ```
-impl<S: Send + Sync> FromRequestParts<S> for PageParam {
-    type Rejection = axum::response::Response;
+impl actix_web::FromRequest for PageParam {
+    type Error = actix_web::Error;
+    type Future = std::future::Ready<Result<Self, Self::Error>>;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let query = parts.uri.query().unwrap_or("");
+    fn from_request(req: &HttpRequest, _payload: &mut actix_web::dev::Payload) -> Self::Future {
+        let query = req.query_string();
         let param: PageParam = serde_urlencoded::from_str(query).unwrap_or_default();
-        Ok(param)
+        std::future::ready(Ok(param))
     }
 }
 
 /// 分页响应包装器（对标 Java `@ResponseBody` + `Page<T>`）。
 ///
-/// 由于 Rust orphan rule 限制，无法直接为 `Page<T>` 实现 axum 的 `IntoResponse`。
+/// 由于 Rust orphan rule 限制，无法直接为 `Page<T>` 实现 actix-web 的 `Responder`。
 /// 使用此包装器将 `Page<T>` 转换为 JSON 响应。
 ///
 /// # Example
 ///
 /// ```ignore
-/// use rbatis_plus_vernal::axum_integration::PageResponse;
+/// use rbatis_plus_vernal::actix_integration::PageResponse;
 /// use rbatis_plus_core::page::Page;
 ///
 /// async fn list() -> PageResponse<MyItem> {
@@ -125,42 +117,47 @@ impl<S: Send + Sync> FromRequestParts<S> for PageParam {
 /// ```
 pub struct PageResponse<T: serde::Serialize>(pub Page<T>);
 
-impl<T: serde::Serialize> IntoResponse for PageResponse<T> {
-    fn into_response(self) -> Response {
-        let json_value = match serde_json::to_value(&self.0) {
-            Ok(v) => v,
+impl<T: serde::Serialize> Responder for PageResponse<T> {
+    type Body = actix_web::body::BoxBody;
+
+    fn respond_to(self, _req: &HttpRequest) -> actix_web::HttpResponse<Self::Body> {
+        match serde_json::to_value(&self.0) {
+            Ok(json) => actix_web::HttpResponse::Ok()
+                .content_type("application/json")
+                .body(json.to_string()),
             Err(e) => {
                 log::error!("分页结果序列化失败: {}", e);
-                return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response();
+                actix_web::HttpResponse::InternalServerError()
+                    .body(format!("分页结果序列化失败: {}", e))
             }
-        };
-        Json(json_value).into_response()
+        }
     }
 }
 
-/// 辅助函数：将 `Page<T>` 转换为 axum JSON 响应。
+/// 辅助函数：将 `Page<T>` 转换为 actix-web JSON 响应。
 ///
 /// 对应 Java Spring MVC 中的 `ResponseEntity.ok(page)`。
 ///
 /// # Example
 ///
 /// ```ignore
-/// use rbatis_plus_vernal::axum_integration::page_response;
+/// use rbatis_plus_vernal::actix_integration::{page_response, PageParam};
 /// use rbatis_plus_core::page::Page;
 ///
-/// async fn list() -> impl IntoResponse {
+/// async fn list() -> actix_web::HttpResponse {
 ///     let page: Page<MyItem> = query_page().await;
 ///     page_response(page)
 /// }
 /// ```
-pub fn page_response<T: serde::Serialize>(page: Page<T>) -> Json<serde_json::Value> {
+pub fn page_response<T: serde::Serialize>(page: Page<T>) -> actix_web::HttpResponse {
     match serde_json::to_value(&page) {
-        Ok(json) => Json(json),
+        Ok(json) => actix_web::HttpResponse::Ok()
+            .content_type("application/json")
+            .body(json.to_string()),
         Err(e) => {
             log::error!("分页结果序列化失败: {}", e);
-            Json(serde_json::json!({
-                "error": format!("分页结果序列化失败: {}", e)
-            }))
+            actix_web::HttpResponse::InternalServerError()
+                .body(format!("分页结果序列化失败: {}", e))
         }
     }
 }

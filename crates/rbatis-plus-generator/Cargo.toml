@@ -9,9 +9,13 @@ description = "Code generator for RBatis-Plus (Entity/Mapper/Service/Controller 
 rbatis = { workspace = true }
 rbs = { workspace = true }
 rbdc = { workspace = true }
+rbatis-plus-core = { path = "../rbatis-plus-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
 chrono = { workspace = true }
 Inflector = { workspace = true }
 async-trait = { workspace = true }
+handlebars = "6"
+askama = "0.12"
+maud = "0.26"

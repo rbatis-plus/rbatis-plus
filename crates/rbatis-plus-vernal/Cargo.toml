@@ -5,10 +5,29 @@ edition.workspace = true
 license.workspace = true
 description = "Web framework integration for RBatis-Plus (axum/actix-web, mirroring mybatis-plus-spring)"
 
+[features]
+default = []
+axum = ["dep:axum", "dep:serde_urlencoded"]
+actix = ["dep:actix-web", "dep:serde_urlencoded"]
+
 [dependencies]
 rbatis = { workspace = true }
 rbs = { workspace = true }
+rbdc = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 log = { workspace = true }
 rbatis-plus-core = { path = "../rbatis-plus-core" }
 rbatis-plus-extension = { path = "../rbatis-plus-extension" }
+
+# 共享 web 依赖（axum 或 actix feature 时启用）
+serde_urlencoded = { version = "0.7", optional = true }
+
+# axum 集成（feature = "axum"）
+axum = { version = "0.8", optional = true }
+
+# actix-web 集成（feature = "actix"）
+actix-web = { version = "4", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
