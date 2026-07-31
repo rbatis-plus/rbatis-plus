@@ -401,6 +401,7 @@ fn test_lambda_eq_or_is_null() {
 
 #[derive(rbatis_plus_macros::TableName)]
 #[table_name = "sys_user"]
+#[allow(dead_code)] // 测试实体，仅用于派生宏断言
 struct SysUser {
     #[table_id]
     id: i64,
@@ -1137,6 +1138,7 @@ fn test_pagination_interceptor_debug() {
 
 #[derive(rbatis_plus_macros::TableName)]
 #[table_name = "sys_order"]
+#[allow(dead_code)] // 测试实体，仅用于派生宏断言
 struct SysOrder {
     #[table_id(type = "auto")]
     id: i64,

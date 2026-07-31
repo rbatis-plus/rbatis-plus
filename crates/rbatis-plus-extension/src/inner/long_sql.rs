@@ -181,6 +181,7 @@ mod tests {
             }
         }
 
+        #[allow(dead_code)] // 测试调试访问器，供后续测试断言使用
         fn calls(&self) -> Vec<(String, usize, usize)> {
             self.calls.lock().unwrap().clone()
         }

@@ -2,7 +2,7 @@
 //!
 //! 无 #[cfg(test)] 限制，供集成测试（tests/）和单元测试均可访问。
 
-use crate::derive::{FieldFill, FieldStrategy, IdType};
+use crate::derive::{FieldStrategy, IdType};
 use crate::metadata::{TableFieldInfo, TableInfo};
 
 /// 构造一个标准的 User 表 `TableInfo`。

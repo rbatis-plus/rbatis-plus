@@ -63,3 +63,6 @@ tempfile = { workspace = true }
 trybuild = "1"
 rbatis-plus-core = { path = "crates/rbatis-plus-core" }
 rbatis-plus-macros = { path = "crates/rbatis-plus-macros" }
+
+[features]
+axum = ["rbatis-plus-vernal/axum"]

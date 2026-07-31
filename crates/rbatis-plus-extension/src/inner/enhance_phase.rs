@@ -13,6 +13,7 @@
 ///
 /// 数值越小越先执行。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[allow(non_camel_case_types)] // 枚举名与 Java EnhancePhase 一一对应（如 SQL_REWRITE、RESULT_I18N）
 pub enum EnhancePhase {
     /// SQL 结构改写或前置保护（如 INSERT IGNORE、超长 SQL 检测）。
     SQL_REWRITE = 100,

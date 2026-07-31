@@ -35,6 +35,10 @@ impl MergeSegments {
     }
 
     /// 生成下一个参数名（`MPGENVAL{n}`）。
+    ///
+    /// 预留：与 MyBatis-Plus `paramNameValuePairs` 的 `MPGENVAL` 命名对应，
+    /// 当前参数按位置绑定（`params()`），命名参数生成后续启用。
+    #[allow(dead_code)]
     fn next_param_name(&mut self) -> String {
         self.param_seq += 1;
         format!("MPGENVAL{}", self.param_seq)

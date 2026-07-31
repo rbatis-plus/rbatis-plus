@@ -39,6 +39,7 @@ mod tests {
     use crate::metadata::TableFieldInfo;
     use crate::derive::FieldStrategy;
 
+    #[allow(dead_code)] // 测试辅助：构造 User 表 TableInfo，供后续 method 测试使用
     fn test_table_info() -> TableInfo {
         TableInfo {
             entity_type: "User",

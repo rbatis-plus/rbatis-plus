@@ -132,8 +132,8 @@ impl TableInfo {
             let prefix = if is_where { "" } else { "set " };
             let connector = if start_with_and { "AND " } else { "" };
             format!(
-                "{}{} = {}",
-                connector, field.column, field.logic_delete_value
+                "{}{}{} = {}",
+                prefix, connector, field.column, field.logic_delete_value
             )
         } else {
             String::new()

@@ -3,7 +3,7 @@
 
 use async_trait::async_trait;
 use rbatis::executor::Executor;
-use rbatis::intercept::{Action, ResultType};
+use rbatis::intercept::Action;
 use rbatis::{Error, plugin::transaction::TransactionEvent};
 use rbdc::db::ExecResult;
 use rbs::Value;

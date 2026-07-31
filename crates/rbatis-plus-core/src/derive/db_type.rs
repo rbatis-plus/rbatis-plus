@@ -12,6 +12,7 @@
 /// assert_eq!(DbType::from_key("unknown"), Some(DbType::OTHER));
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[allow(non_camel_case_types)] // 枚举名与 Java DbType 一一对应（如 ORACLE_12C、POSTGRE_SQL）
 pub enum DbType {
     MYSQL,
     MARIADB,
@@ -113,7 +114,6 @@ impl DbType {
             Self::DUCKDB => "duckdb",
             Self::YASDB => "yasdb",
             Self::OTHER => "other",
-            _ => "other",
         }
     }
 
@@ -166,7 +166,6 @@ impl DbType {
             Self::DUCKDB          => "duckdb数据库",
             Self::YASDB           => "崖山数据库",
             Self::OTHER           => "其他数据库",
-            _ => "未知数据库",
         }
     }
 

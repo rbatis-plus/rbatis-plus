@@ -11,12 +11,11 @@
 
 use async_trait::async_trait;
 use rbatis::executor::Executor;
-use rbatis::intercept::{Action, ResultType};
+use rbatis::intercept::Action;
 use rbatis::{Error, plugin::transaction::TransactionEvent};
 use rbdc::db::ExecResult;
 use rbs::Value;
 
-use super::enhance_phase::EnhancePhase;
 use super::InnerInterceptor;
 
 /// 增强拦截器调度器（对齐 Java `MybatisPlusEnhanceInterceptor`）。

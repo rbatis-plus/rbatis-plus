@@ -5,7 +5,7 @@
 use crate::inner::inner_interceptor::InnerInterceptor;
 use async_trait::async_trait;
 use rbatis::executor::Executor;
-use rbatis::{Action, Error};
+use rbatis::Error;
 use rbs::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
