@@ -2,14 +2,22 @@
 name = "rbatis-plus-generator"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-description = "Code generator for RBatis-Plus (Entity/Mapper/Service/Controller generation, mirroring mybatis-plus-generator)"
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords = ["rbatis", "orm", "mybatis-plus", "code-generator", "database"]
+categories = ["database", "development-tools"]
+documentation = "https://docs.rs/rbatis-plus-generator"
+readme = "../../README.md"
+publish = ["crates-io"]
 
 [dependencies]
 rbatis = { workspace = true }
 rbs = { workspace = true }
 rbdc = { workspace = true }
-rbatis-plus-core = { path = "../rbatis-plus-core" }
+rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "../rbatis-plus-core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }

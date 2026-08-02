@@ -2,8 +2,16 @@
 name = "rbatis-plus-sqlparser"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-description = "SQL parser and rewriter for RBatis-Plus (pagination, dialect support, mirroring mybatis-plus-jsqlparser)"
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords = ["rbatis", "orm", "mybatis-plus", "sql", "parser"]
+categories = ["database", "parser-implementations"]
+documentation = "https://docs.rs/rbatis-plus-sqlparser"
+readme = "../../README.md"
+publish = ["crates-io"]
 
 [dependencies]
 log = { workspace = true }

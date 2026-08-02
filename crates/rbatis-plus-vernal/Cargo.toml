@@ -2,8 +2,16 @@
 name = "rbatis-plus-vernal"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-description = "Web framework integration for RBatis-Plus (axum/actix-web, mirroring mybatis-plus-spring)"
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords = ["rbatis", "orm", "mybatis-plus", "axum", "actix"]
+categories = ["database", "web-programming"]
+documentation = "https://docs.rs/rbatis-plus-vernal"
+readme = "../../README.md"
+publish = ["crates-io"]
 
 [features]
 default = []
@@ -17,8 +25,8 @@ rbdc = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
-rbatis-plus-core = { path = "../rbatis-plus-core" }
-rbatis-plus-extension = { path = "../rbatis-plus-extension" }
+rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "../rbatis-plus-core" }
+rbatis-plus-extension = { version = "=0.1.1-alpha.1", path = "../rbatis-plus-extension" }
 
 # 共享 web 依赖（axum 或 actix feature 时启用）
 serde_urlencoded = { version = "0.7", optional = true }

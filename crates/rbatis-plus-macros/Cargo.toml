@@ -2,8 +2,16 @@
 name = "rbatis-plus-macros"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-description = "Procedural macros for RBatis-Plus (derive TableName, TableId, etc.)"
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords = ["rbatis", "orm", "mybatis-plus", "macros", "derive"]
+categories = ["database", "development-tools::procedural-macro-helpers"]
+documentation = "https://docs.rs/rbatis-plus-macros"
+readme = "../../README.md"
+publish = ["crates-io"]
 
 [lib]
 proc-macro = true
@@ -15,4 +23,4 @@ proc-macro2 = { workspace = true }
 
 [dev-dependencies]
 trybuild = "1"
-rbatis-plus-core = { path = "../rbatis-plus-core" }
+rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "../rbatis-plus-core" }
