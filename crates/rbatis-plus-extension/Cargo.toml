@@ -28,3 +28,6 @@ serde = { workspace = true }
 async-trait = { workspace = true }
 log = { workspace = true }
 dashmap = { workspace = true }
+
+[dev-dependencies]
+futures = "0.3"

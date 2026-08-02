@@ -2043,6 +2043,7 @@ version = "0.1.1-alpha.1"
 dependencies = [
  "async-trait",
  "dashmap",
+ "futures",
  "log",
  "rbatis",
  "rbatis-cache",

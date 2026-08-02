@@ -11,10 +11,14 @@
 
 use async_trait::async_trait;
 use rbatis::executor::Executor;
-use rbatis::intercept::Action;
-use rbatis::{Error, plugin::transaction::TransactionEvent};
+use rbatis::intercept::{Action, Intercept, ResultType};
+use rbatis::plugin::transaction::{
+    TransactionEvent, TransactionEventType, TransactionListener,
+};
+use rbatis::{Error, RBatis};
 use rbdc::db::ExecResult;
 use rbs::Value;
+use std::sync::Arc;
 
 use super::InnerInterceptor;
 
@@ -54,7 +58,7 @@ impl MybatisPlusEnhanceInterceptor {
     /// 批量设置拦截器（含阶段顺序校验）。
     pub fn set_inner_interceptors(&mut self, interceptors: Vec<Box<dyn InnerInterceptor>>) {
         for interceptor in &interceptors {
-            self.validate_enhance_box(interceptor);
+            self.validate_enhance_box(interceptor.as_ref());
         }
         self.inner = interceptors;
     }
@@ -69,13 +73,102 @@ impl MybatisPlusEnhanceInterceptor {
         let _ = interceptor; // 占位，待 EnhancePhase 集成
     }
 
-    fn validate_enhance_box(&self, _interceptor: &Box<dyn InnerInterceptor>) {
+    fn validate_enhance_box(&self, _interceptor: &dyn InnerInterceptor) {
         // 同上，待 EnhancePhase 集成
     }
 
     /// 获取已注册的拦截器列表。
     pub fn interceptors(&self) -> &[Box<dyn InnerInterceptor>] {
         &self.inner
+    }
+
+    /// 安装到 [`RBatis`] 拦截链（拦截器 + 事务事件转发器）。
+    ///
+    /// - 拦截器插入 `RBatis::intercepts` **最前**：SQL 改写（分页/租户等）
+    ///   先于缓存（`RbatisCacheInterceptor`）执行，保证缓存看到改写后的
+    ///   SQL（键一致、不串页）。
+    /// - 同一实例同时注册为 `TransactionListener`，把 commit/rollback
+    ///   事件转发给各 `InnerInterceptor::on_transaction_event`。
+    ///
+    /// 安装顺序约定：先 `install_cache`（缓存），再 `install`（增强）——
+    /// 后安装者位于链首，因此增强改写先于缓存命中判定。
+    pub fn install(self: Arc<Self>, rb: &RBatis) {
+        rb.intercepts.insert(0, self.clone() as Arc<dyn Intercept>);
+        rb.add_listener(self.clone() as Arc<dyn TransactionListener>);
+    }
+}
+
+impl Default for MybatisPlusEnhanceInterceptor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// 桥接到 rbatis 拦截链：把 `Intercept::before/after` 分派给 InnerInterceptor。
+///
+/// `before` 按操作类型分派 `before_query` / `before_update`（短路语义透传）；
+/// `after` 分派 `after_query` / `after_update` 并广播 `after_execution`
+/// （观测/metrics）。`after_execution` 的耗时传 0——`Intercept` 钩子不提供
+/// 耗时信息，需要精确计时的观测请直接包装 `Executor`。
+#[async_trait]
+impl Intercept for MybatisPlusEnhanceInterceptor {
+    async fn before(
+        &self,
+        _task_id: i64,
+        executor: &dyn Executor,
+        sql: &mut String,
+        args: &mut Vec<Value>,
+        result: ResultType<&mut Result<ExecResult, Error>, &mut Result<Value, Error>>,
+    ) -> Result<Action, Error> {
+        match result {
+            ResultType::Query(result) => {
+                self.before_query(executor, sql, args, result).await
+            }
+            ResultType::Exec(result) => {
+                self.before_update(executor, sql, args, result).await
+            }
+        }
+    }
+
+    async fn after(
+        &self,
+        _task_id: i64,
+        executor: &dyn Executor,
+        sql: &mut String,
+        _args: &mut Vec<Value>,
+        result: ResultType<&mut Result<ExecResult, Error>, &mut Result<Value, Error>>,
+    ) -> Result<Action, Error> {
+        match result {
+            ResultType::Query(result) => {
+                let dispatched = self.after_query(executor, sql, result).await;
+                let failure = result.as_ref().err();
+                self.after_execution(executor, sql, 0, failure).await;
+                dispatched.map(|_| Action::Next)
+            }
+            ResultType::Exec(result) => {
+                let dispatched = self.after_update(executor, sql, result).await;
+                let failure = result.as_ref().err();
+                self.after_execution(executor, sql, 0, failure).await;
+                dispatched.map(|_| Action::Next)
+            }
+        }
+    }
+}
+
+/// 事务事件转发器：把 rbatis 的 begin/commit/rollback 广播给各 inner 拦截器。
+#[async_trait]
+impl TransactionListener for MybatisPlusEnhanceInterceptor {
+    async fn on_event(&self, event: &TransactionEvent) -> Result<(), Error> {
+        if matches!(
+            event.event_type,
+            TransactionEventType::CommitSuccess
+                | TransactionEventType::CommitFailed
+                | TransactionEventType::Rollback
+                | TransactionEventType::RollbackFailed
+        ) {
+            self.on_transaction_event(event).await;
+        }
+        Ok(())
     }
 }
 
