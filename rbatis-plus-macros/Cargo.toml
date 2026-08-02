@@ -10,7 +10,7 @@ homepage.workspace = true
 keywords = ["rbatis", "orm", "mybatis-plus", "macros", "derive"]
 categories = ["database", "development-tools::procedural-macro-helpers"]
 documentation = "https://docs.rs/rbatis-plus-macros"
-readme = "../../README.md"
+readme = "../README.md"
 publish = ["crates-io"]
 
 [lib]

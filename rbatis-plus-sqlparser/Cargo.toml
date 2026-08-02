@@ -10,7 +10,7 @@ homepage.workspace = true
 keywords = ["rbatis", "orm", "mybatis-plus", "sql", "parser"]
 categories = ["database", "parser-implementations"]
 documentation = "https://docs.rs/rbatis-plus-sqlparser"
-readme = "../../README.md"
+readme = "../README.md"
 publish = ["crates-io"]
 
 [dependencies]

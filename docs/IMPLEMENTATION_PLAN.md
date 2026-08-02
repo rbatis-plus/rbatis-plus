@@ -95,14 +95,13 @@ rbatis-plus/
 │   ├── OBSERVABILITY_SECURITY_OPERATIONS.md  # companion
 │   ├── TEST_AND_ACCEPTANCE_PLAN.md     # companion
 │   └── RBatis 支持二级缓存调研报告.md  # research baseline
-├── crates/
 │   ├── rbatis-plus/                    # meta-crate: re-exports + facade
 │   │   ├── Cargo.toml                  # TBD
 │   │   └── src/
 │   │       ├── lib.rs                  # planned
 │   │       └── prelude.rs              # planned
 │   │
-│   ├── rbatis-plus-core/               # policy, key builder, intercept glue
+├── rbatis-plus-core/               # policy, key builder, intercept glue
 │   │   ├── Cargo.toml                  # TBD
 │   │   └── src/
 │   │       ├── lib.rs                  # planned
@@ -112,13 +111,13 @@ rbatis-plus/
 │   │       ├── intercept.rs            # planned: CacheIntercept
 │   │       └── metrics.rs              # planned: MetricsRecorder trait
 │   │
-│   ├── rbatis-plus-mem/                # in-process backend
+├── rbatis-plus-mem/                # in-process backend
 │   │   ├── Cargo.toml                  # TBD
 │   │   └── src/
 │   │       ├── lib.rs                  # planned
 │   │       └── store.rs                # planned: MemoryCacheStore
 │   │
-│   ├── rbatis-plus-redis/              # distributed backend (optional)
+├── rbatis-plus-redis/              # distributed backend (optional)
 │   │   ├── Cargo.toml                  # TBD
 │   │   └── src/
 │   │       ├── lib.rs                  # planned
@@ -127,7 +126,7 @@ rbatis-plus/
 │   │       ├── versioning.rs           # planned: tag version keys
 │   │       └── pubsub.rs               # planned: invalidation bus
 │   │
-│   ├── rbatis-plus-macros/             # declarative annotations (Phase 5)
+├── rbatis-plus-macros/             # declarative annotations (Phase 5)
 │   │   ├── Cargo.toml                  # TBD
 │   │   └── src/
 │   │       ├── lib.rs                  # planned
@@ -284,7 +283,7 @@ pub struct RBatis {
 ### 3.4 RBatis-Plus-Core: types
 
 ```rust
-// planned: crates/rbatis-plus-core/src/lib.rs
+// planned: rbatis-plus-core/src/lib.rs
 pub use policy::{CachePolicy, TransactionCacheMode, CacheFailureMode};
 pub use key::{CacheKey, CacheKeyBuilder, KeyHasher};
 pub use provider::{CachePolicyProvider, StaticPolicyProvider};
@@ -296,7 +295,7 @@ pub use error::CacheError;
 `CachePolicy` is planned (values are placeholders until implementation):
 
 ```rust
-// planned: crates/rbatis-plus-core/src/policy.rs
+// planned: rbatis-plus-core/src/policy.rs
 #[derive(Clone, Debug)]
 pub struct CachePolicy {
     pub namespace: String,                 // e.g. "user.profile"
@@ -327,7 +326,7 @@ pub enum CacheFailureMode {
 `CacheKey` is planned:
 
 ```rust
-// planned: crates/rbatis-plus-core/src/key.rs
+// planned: rbatis-plus-core/src/key.rs
 pub struct CacheKey { /* opaque bytes */ }
 
 pub struct CacheKeyBuilder {
@@ -347,7 +346,7 @@ impl CacheKeyBuilder {
 ### 3.5 RBatis-Plus-Mem: backend
 
 ```rust
-// planned: crates/rbatis-plus-mem/src/lib.rs
+// planned: rbatis-plus-mem/src/lib.rs
 pub struct MemoryCacheStore {
     values: moka::future::Cache<CacheKey, Arc<Value>>,
     tag_versions: dashmap::DashMap<CacheTag, AtomicU64>,
@@ -375,7 +374,7 @@ the workspace `Cargo.toml` when the crate is implemented.
 ### 3.6 RBatis-Plus-Redis: backend
 
 ```rust
-// planned: crates/rbatis-plus-redis/src/lib.rs
+// planned: rbatis-plus-redis/src/lib.rs
 pub struct RedisCacheStore {
     client: redis::Client,                  // planned: redis-rs async
     publisher: redis::aio::PubSub,
@@ -469,13 +468,13 @@ Purpose: prove cache value without exposing it inside the upstream crate.
 
 Planned tasks:
 
-1. Introduce `crates/rbatis-plus-core/` (planned) with:
+1. Introduce `rbatis-plus-core/` (planned) with:
    - `CachePolicy`, `CacheFailureMode`, `TransactionCacheMode`.
    - `CacheKeyBuilder` using `blake3` (planned; hash choice TBD).
    - `StaticPolicyProvider` returning a single policy.
    - `CacheIntercept` reading lifecycle from `Intercept::ctx`.
    - `MetricsRecorder` trait + `NoopMetricsRecorder`.
-2. Add `crates/rbatis-plus-mem/` (planned) with `MemoryCacheStore` using
+2. Add `rbatis-plus-mem/` (planned) with `MemoryCacheStore` using
    Moka.
 3. Wire `rbatis-plus-core` and `rbatis-plus-mem` against upstream Phase 0
    hooks via a path dependency or git dependency on a branch (the exact
@@ -486,7 +485,7 @@ Planned tasks:
    - TTL expiry miss.
    - Cache backend down — query still succeeds (FailOpen default).
    - DML success clears namespace.
-5. Documentation in `crates/rbatis-plus-core/README.md` (planned):
+5. Documentation in `rbatis-plus-core/README.md` (planned):
    - "MVP limitations" callout: no tx-deferred invalidation; rely on TTL for
      external writes.
 

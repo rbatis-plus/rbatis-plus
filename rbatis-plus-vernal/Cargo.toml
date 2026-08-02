@@ -10,7 +10,7 @@ homepage.workspace = true
 keywords = ["rbatis", "orm", "mybatis-plus", "axum", "actix"]
 categories = ["database", "web-programming"]
 documentation = "https://docs.rs/rbatis-plus-vernal"
-readme = "../../README.md"
+readme = "../README.md"
 publish = ["crates-io"]
 
 [features]

@@ -10,7 +10,7 @@
 >
 > 参考资料：
 > - 工作区根 README（侧写"目标"，已落后）：`/README.md`
-> - 实际源码：`crates/rbatis-plus-{core,extension,macros,generator,sqlparser,vernal}/`
+> - 实际源码：`rbatis-plus-{core,extension,macros,generator,sqlparser,vernal}/`
 > - 默认分支：`dev`
 >
 > 本文重定位：本仓库文档 = **已经存在但仍需要导览** 的"代码级事实"，而非"愿景"。
@@ -72,8 +72,7 @@
 rbatis-plus/                                          Cargo workspace
 ├── Cargo.toml                                     facade crate "rbatis-plus" 0.1.0
 ├── README.md                                      ⚠️ 落后声明 DESIGN ONLY（实际已实现）
-├── crates/
-│   ├── rbatis-plus-core/                  ★ 主领域抽象
+├── rbatis-plus-core/                  ★ 主领域抽象
 │   │   └── src/
 │   │       ├── lib.rs (38 行)
 │   │       ├── mapper/{base_mapper.rs, mod.rs}
@@ -101,7 +100,7 @@ rbatis-plus/                                          Cargo workspace
 │   │       ├── listener.rs (73 行)
 │   │       └── toolkit/
 │   │       └── wrapper.rs (29 行)
-│   ├── rbatis-plus-extension/              ★ 9 个内置拦截器 + 增强能力
+├── rbatis-plus-extension/              ★ 9 个内置拦截器 + 增强能力
 │   │   └── src/
 │   │       ├── inner/
 │   │       │   ├── mod.rs (25)
@@ -125,11 +124,11 @@ rbatis-plus/                                          Cargo workspace
 │   │       ├── observation.rs + observation/  SQL 观测
 │   │       ├── insert_ignore.rs + insert_ignore/  MySQL INSERT IGNORE
 │   │       └── service/                     IService + ServiceImpl（Spring 集成）
-│   ├── rbatis-plus-macros/                 ★ 过程宏（derives）
+├── rbatis-plus-macros/                 ★ 过程宏（derives）
 │   │   └── src/                             仅 1 个 .rs（实际宏定义可见 documentation）
-│   ├── rbatis-plus-generator/              ★ 代码生成器（基于 tera）
+├── rbatis-plus-generator/              ★ 代码生成器（基于 tera）
 │   │   └── src/                             11 个 .rs / 含 tera 模板引擎
-│   ├── rbatis-plus-sqlparser/              ★ sqlparser 多版本兼容
+├── rbatis-plus-sqlparser/              ★ sqlparser 多版本兼容
 │   │   └── src/                             7 个 .rs
 │   └── rbatis-plus-vernal/                  ★ vernal-framework 集成
 │       └── src/                             4 个 .rs / 含 axum_integration
@@ -217,7 +216,7 @@ pub use rbatis_plus_extension::service::ServiceImpl;
 
 ## 5. `core` crate
 
-### 5.1 `BaseMapper<T>` trait（`crates/rbatis-plus-core/src/mapper/base_mapper.rs`，90+ 行）
+### 5.1 `BaseMapper<T>` trait（`rbatis-plus-core/src/mapper/base_mapper.rs`，90+ 行）
 
 ```rust
 #[async_trait]
@@ -243,7 +242,7 @@ pub trait BaseMapper<T: Serialize + DeserializeOwned + Send + Sync>: Send + Sync
 
 ### 5.2 `QueryWrapper` + `LambdaQueryWrapper`
 
-`crates/rbatis-plus-core/src/conditions/query/query_wrapper.rs`，317 行：
+`rbatis-plus-core/src/conditions/query/query_wrapper.rs`，317 行：
 
 ```rust
 #[derive(Debug, Clone, Default)]
@@ -647,7 +646,7 @@ build_select_sql()
 
 ## 11. 与 **rbatis 主仓 `df87ac41`** 已合入的 Caffeine 缓存关系
 
-> 主仓 `rbatis/src/plugin/cache/` 与本仓 `rbatis-plus/crates/rbatis-plus-core/src/cache/` 是**并行**项目，作者应该有意做了第二份。
+> 主仓 `rbatis/src/plugin/cache/` 与本仓 `rbatis-plus/rbatis-plus-core/src/cache/` 是**并行**项目，作者应该有意做了第二份。
 
 **对比**：
 
@@ -744,15 +743,15 @@ codegraph query "tenant\|pagination\|optimistic_locker\|data_permission\|block_a
 
 1. **`Cargo.toml`** —— workspace 与默认依赖
 2. **`src/lib.rs`**（facade 重导出）—— 30 秒了解"能用 rbatis-plus::* 访问到什么"
-3. **`crates/rbatis-plus-core/src/lib.rs`**（38 行）—— 列举 `core` 模块全景
-4. **`crates/rbatis-plus-core/src/mapper/base_mapper.rs`**（90 行）—— `BaseMapper<T>` 完整 9+ CRUD 方法签名
-5. **`crates/rbatis-plus-core/src/conditions/query/query_wrapper.rs`**（317 行）—— `QueryWrapper.build_select_sql` 全文
-6. **`crates/rbatis-plus-core/src/conditions/query/lambda_query_wrapper.rs`**（548 行）—— 类型安全 wrapper
-7. **`crates/rbatis-plus-core/src/conditions/compare.rs`**（209 行）—— `Compare` trait 全套 + `AbstractWrapper` 12 个 `format_*` 工具
-8. **`crates/rbatis-plus-core/src/cache/store.rs` + `memory.rs`** —— 缓存子系统
-9. **`crates/rbatis-plus-extension/src/inner/inner_interceptor.rs`**（77 行 ★ 6 钩子 SPI）
-10. **`crates/rbatis-plus-extension/src/inner/base.rs`** —— 短名别名表
-11. **`crates/rbatis-plus-extension/src/inner/{tenant,pagination,optimistic_locker}.rs`** —— 三个最常用拦截器
+3. **`rbatis-plus-core/src/lib.rs`**（38 行）—— 列举 `core` 模块全景
+4. **`rbatis-plus-core/src/mapper/base_mapper.rs`**（90 行）—— `BaseMapper<T>` 完整 9+ CRUD 方法签名
+5. **`rbatis-plus-core/src/conditions/query/query_wrapper.rs`**（317 行）—— `QueryWrapper.build_select_sql` 全文
+6. **`rbatis-plus-core/src/conditions/query/lambda_query_wrapper.rs`**（548 行）—— 类型安全 wrapper
+7. **`rbatis-plus-core/src/conditions/compare.rs`**（209 行）—— `Compare` trait 全套 + `AbstractWrapper` 12 个 `format_*` 工具
+8. **`rbatis-plus-core/src/cache/store.rs` + `memory.rs`** —— 缓存子系统
+9. **`rbatis-plus-extension/src/inner/inner_interceptor.rs`**（77 行 ★ 6 钩子 SPI）
+10. **`rbatis-plus-extension/src/inner/base.rs`** —— 短名别名表
+11. **`rbatis-plus-extension/src/inner/{tenant,pagination,optimistic_locker}.rs`** —— 三个最常用拦截器
 12. **`tests/integration_test.rs`** —— 跟着测试学 24+ 个 SQL 生成示例
 
 ---

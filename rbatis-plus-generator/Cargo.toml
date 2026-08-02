@@ -10,7 +10,7 @@ homepage.workspace = true
 keywords = ["rbatis", "orm", "mybatis-plus", "code-generator", "database"]
 categories = ["database", "development-tools"]
 documentation = "https://docs.rs/rbatis-plus-generator"
-readme = "../../README.md"
+readme = "../README.md"
 publish = ["crates-io"]
 
 [dependencies]

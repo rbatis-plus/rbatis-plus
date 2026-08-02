@@ -1,5 +1,5 @@
 [package]
-name = "rbatis-plus-core"
+name = "rbatis-plus-extension"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,19 +7,19 @@ license.workspace = true
 description.workspace = true
 repository.workspace = true
 homepage.workspace = true
-keywords = ["rbatis", "orm", "mybatis-plus", "database", "sql"]
+keywords = ["rbatis", "orm", "mybatis-plus", "interceptor", "database"]
 categories = ["database", "web-programming"]
-documentation = "https://docs.rs/rbatis-plus-core"
-readme = "../../README.md"
+documentation = "https://docs.rs/rbatis-plus-extension"
+readme = "../README.md"
 publish = ["crates-io"]
 
 [features]
 default = []
-# 缓存能力来自 rbatis-cache（执行器集成层 + CacheBackend SPI），
-# 本 crate 仅做类型 re-export。
-cache = ["dep:rbatis-cache"]
+cache = ["rbatis-plus-core/cache", "dep:rbatis-cache"]
 
 [dependencies]
+rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "../rbatis-plus-core" }
+rbatis-plus-sqlparser = { version = "=0.1.1-alpha.1", path = "../rbatis-plus-sqlparser" }
 rbatis = { workspace = true }
 rbatis-cache = { workspace = true, optional = true }
 rbs = { workspace = true }
@@ -27,9 +27,7 @@ rbdc = { workspace = true }
 serde = { workspace = true }
 async-trait = { workspace = true }
 log = { workspace = true }
-hex = { workspace = true }
 dashmap = { workspace = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }
-rusqlite = { version = "0.31", features = ["bundled"] }
+futures = "0.3"

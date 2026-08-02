@@ -1,11 +1,11 @@
 [workspace]
 members = [
-    "crates/rbatis-plus-core",
-    "crates/rbatis-plus-extension",
-    "crates/rbatis-plus-macros",
-    "crates/rbatis-plus-generator",
-    "crates/rbatis-plus-sqlparser",
-    "crates/rbatis-plus-vernal",
+    "rbatis-plus-core",
+    "rbatis-plus-extension",
+    "rbatis-plus-macros",
+    "rbatis-plus-generator",
+    "rbatis-plus-sqlparser",
+    "rbatis-plus-vernal",
 ]
 resolver = "2"
 
@@ -62,12 +62,12 @@ readme = "README.md"
 publish = ["crates-io"]
 
 [dependencies]
-rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-core" }
-rbatis-plus-extension = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-extension" }
-rbatis-plus-macros = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-macros" }
-rbatis-plus-generator = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-generator" }
-rbatis-plus-sqlparser = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-sqlparser" }
-rbatis-plus-vernal = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-vernal" }
+rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "rbatis-plus-core" }
+rbatis-plus-extension = { version = "=0.1.1-alpha.1", path = "rbatis-plus-extension" }
+rbatis-plus-macros = { version = "=0.1.1-alpha.1", path = "rbatis-plus-macros" }
+rbatis-plus-generator = { version = "=0.1.1-alpha.1", path = "rbatis-plus-generator" }
+rbatis-plus-sqlparser = { version = "=0.1.1-alpha.1", path = "rbatis-plus-sqlparser" }
+rbatis-plus-vernal = { version = "=0.1.1-alpha.1", path = "rbatis-plus-vernal" }
 rbatis = { workspace = true }
 rbatis-cache = { workspace = true, optional = true }
 serde = { workspace = true }
@@ -77,8 +77,8 @@ rbs = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
 trybuild = "1"
-rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-core" }
-rbatis-plus-macros = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-macros" }
+rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "rbatis-plus-core" }
+rbatis-plus-macros = { version = "=0.1.1-alpha.1", path = "rbatis-plus-macros" }
 
 [features]
 default = []
