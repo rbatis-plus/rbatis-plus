@@ -1,10 +1,13 @@
-// 复用上游 rbatis 主仓的 Caffeine 化缓存实现（df87ac41），
-// 不在本地重复发明，保证与上游行为一致。
+//! 二级缓存类型 re-export。
+//!
+//! 缓存实现位于 `rbatis-cache` crate（执行器集成层 `RbatisCacheInterceptor`
+//! + `CacheBackend` SPI + `LocalBackend`/Redis/Memcached 后端），
+//! 本模块仅做公共 API 透传，保持 `rbatis_plus::cache::*` 的调用方式不变。
 
-pub use rbatis::plugin::cache::{
-    CacheError, CacheIntercept, CacheKey, CachePolicy,
-    CacheStore, CacheTag, MemoryCacheStore, SharedCacheStore,
-    CacheTransactionListener, TransactionCacheMode, CacheFailureMode,
-    L1Cache, SharedL1Cache, SingleFlight, TransactionalCacheBuffer,
-    UseCacheFilter,
+pub use rbatis_cache::{
+    CacheBackend, CacheError, CacheEnvelope, CacheFailureMode, CacheInterceptor, CacheKey,
+    CacheKeyInput, CacheMetrics, CacheMetricsSnapshot, CachePolicy, CacheRequest,
+    CacheTransactionListener, InvalidationStrategy, L1Cache, LocalBackend, LocalBackendConfig,
+    RbatisCacheExt, RbatisCacheInterceptor, SingleFlight, SqlMetadata, StatementKind,
+    TransactionCacheMode, TransactionalCacheBuffer, UseCacheFilter,
 };

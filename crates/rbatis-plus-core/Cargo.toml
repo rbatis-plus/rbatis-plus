@@ -2,11 +2,26 @@
 name = "rbatis-plus-core"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-description = "Core conditions, metadata, mapper traits and toolkit for RBatis-Plus"
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords = ["rbatis", "orm", "mybatis-plus", "database", "sql"]
+categories = ["database", "web-programming"]
+documentation = "https://docs.rs/rbatis-plus-core"
+readme = "../../README.md"
+publish = ["crates-io"]
+
+[features]
+default = []
+# 缓存能力来自 rbatis-cache（执行器集成层 + CacheBackend SPI），
+# 本 crate 仅做类型 re-export。
+cache = ["dep:rbatis-cache"]
 
 [dependencies]
 rbatis = { workspace = true }
+rbatis-cache = { workspace = true, optional = true }
 rbs = { workspace = true }
 rbdc = { workspace = true }
 serde = { workspace = true }

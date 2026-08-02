@@ -7,34 +7,40 @@ members = [
     "crates/rbatis-plus-sqlparser",
     "crates/rbatis-plus-vernal",
 ]
-resolver = "3"
+resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.88"
+version = "0.1.1-alpha.1"
+edition = "2021"
+rust-version = "1.75"
 license = "Apache-2.0"
 authors = ["RBatis-Plus Contributors"]
 description = "MyBatis-Plus equivalent enhancement framework for RBatis"
-repository = "https://github.com/rbatis/rbatis-plus"
+repository = "https://github.com/rbatis-plus/rbatis-plus"
+homepage = "https://github.com/rbatis-plus/rbatis-plus"
 
 [workspace.dependencies]
-rbatis = { path = "../rbatis" }
+# 上游 ORM：本地开发指向 rbatis 的 fix/transaction-listener 分支
+# （TransactionListener hook + apply_after 短路修复）。
+# 发布时切换为 https://github.com/rbatis-plus/rbatis.git 或 crates.io 版本。
+rbatis = { git = "file:///Users/wandl/workspaces/workspace-github-easy-4-rust/rbatis", branch = "fix/transaction-listener" }
+# 缓存扩展（执行器集成层 + CacheBackend SPI）。
+rbatis-cache = { path = "../rbatis-cache" }
 rbs = "4"
 rbdc = "4.9"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.150"
-async-trait = "0.1.89"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-trait = "0.1"
 log = "0.4"
-dashmap = "6.1.0"
+dashmap = "6"
 Inflector = "0.11"
-chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
-regex = "1.13.1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+regex = "1"
 hex = "0.4"
-proc-macro2 = "1.0.107"
-quote = "1.0.47"
-syn = { version = "3.0.3", features = ["full"] }
-tempfile = "3.27.0"
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
+tempfile = "3"
 
 # ── facade crate ──
 [package]
@@ -45,15 +51,22 @@ rust-version.workspace = true
 license.workspace = true
 description.workspace = true
 repository.workspace = true
+homepage.workspace = true
+keywords = ["rbatis", "orm", "mybatis-plus", "database", "sql"]
+categories = ["database", "web-programming"]
+documentation = "https://docs.rs/rbatis-plus"
+readme = "README.md"
+publish = ["crates-io"]
 
 [dependencies]
-rbatis-plus-core = { path = "crates/rbatis-plus-core" }
-rbatis-plus-extension = { path = "crates/rbatis-plus-extension" }
-rbatis-plus-macros = { path = "crates/rbatis-plus-macros" }
-rbatis-plus-generator = { path = "crates/rbatis-plus-generator" }
-rbatis-plus-sqlparser = { path = "crates/rbatis-plus-sqlparser" }
-rbatis-plus-vernal = { path = "crates/rbatis-plus-vernal" }
+rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-core" }
+rbatis-plus-extension = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-extension" }
+rbatis-plus-macros = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-macros" }
+rbatis-plus-generator = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-generator" }
+rbatis-plus-sqlparser = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-sqlparser" }
+rbatis-plus-vernal = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-vernal" }
 rbatis = { workspace = true }
+rbatis-cache = { workspace = true, optional = true }
 serde = { workspace = true }
 
 [dev-dependencies]
@@ -61,8 +74,10 @@ rbs = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
 trybuild = "1"
-rbatis-plus-core = { path = "crates/rbatis-plus-core" }
-rbatis-plus-macros = { path = "crates/rbatis-plus-macros" }
+rbatis-plus-core = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-core" }
+rbatis-plus-macros = { version = "=0.1.1-alpha.1", path = "crates/rbatis-plus-macros" }
 
 [features]
+default = []
+cache = ["rbatis-plus-core/cache", "rbatis-plus-extension/cache", "dep:rbatis-cache"]
 axum = ["rbatis-plus-vernal/axum"]

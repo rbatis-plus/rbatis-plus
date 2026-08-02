@@ -8,6 +8,7 @@
 //! - [`observation`] — SQL 执行观察
 //! - [`insert_ignore`] — INSERT IGNORE 支持
 
+pub mod compat;
 pub mod crypto;
 pub mod i18n;
 pub mod inner;
@@ -16,5 +17,6 @@ pub mod observation;
 pub mod service;
 pub mod signature;
 
-// 复用上游 rbatis 主仓的缓存实现
-pub use rbatis::plugin::cache::{CacheError, CacheIntercept, CacheKey, CachePolicy, CacheStore, CacheTag, MemoryCacheStore, SharedCacheStore, CacheTransactionListener, TransactionCacheMode, CacheFailureMode, L1Cache, SharedL1Cache, SingleFlight, TransactionalCacheBuffer, UseCacheFilter};
+// 缓存类型 re-export（实现位于 rbatis-cache crate）。
+#[cfg(feature = "cache")]
+pub use rbatis_cache::{CacheBackend, CacheError, CacheEnvelope, CacheFailureMode, CacheInterceptor, CacheKey, CacheKeyInput, CacheMetrics, CacheMetricsSnapshot, CachePolicy, CacheRequest, CacheTransactionListener, InvalidationStrategy, L1Cache, LocalBackend, LocalBackendConfig, RbatisCacheExt, RbatisCacheInterceptor, SingleFlight, SqlMetadata, StatementKind, TransactionCacheMode, TransactionalCacheBuffer, UseCacheFilter};
