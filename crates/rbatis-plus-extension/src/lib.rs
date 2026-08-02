@@ -8,7 +8,6 @@
 //! - [`observation`] — SQL 执行观察
 //! - [`insert_ignore`] — INSERT IGNORE 支持
 
-pub mod compat;
 pub mod crypto;
 pub mod i18n;
 pub mod inner;

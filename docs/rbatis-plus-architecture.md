@@ -526,7 +526,7 @@ pub struct CachePolicy {
 
 ### 7.4 `CacheIntercept`
 
-`intercept.rs` 仅 37 行——薄壳：
+`intercept_cache` 仅 37 行——薄壳：
 
 ```rust
 pub struct CacheIntercept {

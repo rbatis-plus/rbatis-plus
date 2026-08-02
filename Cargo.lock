@@ -1939,7 +1939,7 @@ checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
 [[package]]
 name = "rbatis"
 version = "4.9.6"
-source = "git+file:///Users/wandl/workspaces/workspace-github-easy-4-rust/rbatis?branch=fix%2Ftransaction-listener#d0e1d12e2d5663b22feb392a83f7d41b924c2b3c"
+source = "git+file:///Users/wandl/workspaces/workspace-github-easy-4-rust/rbatis?branch=fix%2Ftransaction-listener#30504c2a65759c114ba9ad8feea1e071d445b56a"
 dependencies = [
  "async-trait",
  "dark-std",
@@ -1978,7 +1978,7 @@ dependencies = [
 [[package]]
 name = "rbatis-codegen"
 version = "4.9.0"
-source = "git+file:///Users/wandl/workspaces/workspace-github-easy-4-rust/rbatis?branch=fix%2Ftransaction-listener#d0e1d12e2d5663b22feb392a83f7d41b924c2b3c"
+source = "git+file:///Users/wandl/workspaces/workspace-github-easy-4-rust/rbatis?branch=fix%2Ftransaction-listener#30504c2a65759c114ba9ad8feea1e071d445b56a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1992,7 +1992,7 @@ dependencies = [
 [[package]]
 name = "rbatis-macro-driver"
 version = "4.9.0"
-source = "git+file:///Users/wandl/workspaces/workspace-github-easy-4-rust/rbatis?branch=fix%2Ftransaction-listener#d0e1d12e2d5663b22feb392a83f7d41b924c2b3c"
+source = "git+file:///Users/wandl/workspaces/workspace-github-easy-4-rust/rbatis?branch=fix%2Ftransaction-listener#30504c2a65759c114ba9ad8feea1e071d445b56a"
 dependencies = [
  "dark-std",
  "proc-macro2",

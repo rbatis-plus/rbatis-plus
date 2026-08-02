@@ -10,6 +10,8 @@ pub mod toolkit;
 pub mod wrapper;
 
 /// 二级缓存子系统：复用上游 rbatis::plugin::cache 的完整实现。
+/// 需要启用 `cache` feature（依赖 rbatis 本地 fork 含 plugin::cache 模块）。
+#[cfg(feature = "cache")]
 pub mod cache;
 
 // Re-exports from conditions（禁止 wildcard）
