@@ -20,15 +20,10 @@ repository = "https://github.com/rbatis-plus/rbatis-plus"
 homepage = "https://github.com/rbatis-plus/rbatis-plus"
 
 [workspace.dependencies]
-# 上游 ORM：本地开发用 file:// 指向本地 rbatis 仓库的
-# fix/transaction-listener 分支（TransactionListener hook + apply_after
-# 短路修复）。
-# 切换时机：该分支 PR 合入 rbatis 上游并发布后，改为：
-#   rbatis = { git = "https://github.com/rbatis-plus/rbatis.git", branch = "fix/transaction-listener" }
-# 或 crates.io 版本。
-rbatis = { git = "file:///Users/wandl/workspaces/workspace-github-easy-4-rust/rbatis", branch = "fix/transaction-listener" }
-# 缓存扩展（执行器集成层 + CacheBackend SPI）。
-rbatis-cache = { path = "../rbatis-cache" }
+# 上游 ORM（rbatis-plus fork，含 TransactionListener hook）
+rbatis = { git = "https://github.com/rbatis-plus/rbatis.git", branch = "fix/transaction-listener" }
+# 缓存扩展（执行器集成层 + CacheBackend SPI）
+rbatis-cache = { git = "https://github.com/rbatis-plus/rbatis-cache.git", branch = "main" }
 rbs = "4"
 rbdc = "4.9"
 serde = { version = "1", features = ["derive"] }
